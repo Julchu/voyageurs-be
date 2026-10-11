@@ -1,22 +1,18 @@
-import { sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
   doublePrecision,
   index,
   integer,
-  pgEnum,
   pgTable,
   timestamp,
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
-import { TripStatusValues } from "../../types";
 import { requiredColumns, timestamps } from "../utils/shared-schema.ts";
 import { userTable } from "./user.schema.ts";
-
-export const tripStatusEnum = pgEnum("trip_status", TripStatusValues);
 
 export const tripTable = pgTable(
   "trips",
@@ -26,15 +22,11 @@ export const tripTable = pgTable(
       .references(() => userTable.id, { onDelete: "cascade" })
       .notNull(),
     name: varchar({ length: 255 }).notNull(),
-    status: tripStatusEnum("status").notNull().default("current"),
     ...timestamps,
   },
   (table) => [
     uniqueIndex("trips_public_id_unique").on(table.publicId),
     index("trips_user_id_idx").on(table.userId),
-    uniqueIndex("trips_one_current_per_user")
-      .on(table.userId)
-      .where(sql`${table.status} = 'current' AND ${table.deletedAt} IS NULL`),
   ],
 );
 
@@ -46,7 +38,8 @@ export const tripStopTable = pgTable(
       .references(() => tripTable.id, { onDelete: "cascade" })
       .notNull(),
     name: varchar({ length: 255 }).notNull(),
-    address: varchar({ length: 500 }).notNull().default(""),
+    streetAddress: varchar("street_address", { length: 500 }).notNull().default(""),
+    areaAddress: varchar("area_address", { length: 500 }).notNull().default(""),
     latitude: doublePrecision().notNull(),
     longitude: doublePrecision().notNull(),
     position: integer().notNull(),

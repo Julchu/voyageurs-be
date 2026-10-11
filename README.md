@@ -9,7 +9,8 @@ Express 5 + TypeScript API. Started from `express-generator-typescript`, then sh
 - `pnpm lint`
 - `pnpm db-generate` — write a migration from `src/db/schemas`
 - `pnpm db-migrate-dev` — apply migrations to the dev database
-- `pnpm db-studio-dev` — Drizzle Studio on port **8002**
+- `pnpm db-studio-dev` — opens Drizzle Studio on port **8002**
+  - db studio (db viewer): https://local.drizzle.studio/?port=8002
 
 Local Postgres database: `voyageurs_db` on `localhost:5432` (`voyageurs` / `voyageurs`).
 

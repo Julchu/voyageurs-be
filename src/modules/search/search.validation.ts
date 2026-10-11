@@ -8,7 +8,8 @@ const coordinatesSchema = z.object({
 export const searchBodySchema = z.object({
   query: z.string().trim().min(1).max(500),
   name: z.string().trim().min(1).max(255),
-  address: z.string().trim().max(500).default(""),
+  streetAddress: z.string().trim().max(500).default(""),
+  areaAddress: z.string().trim().max(500).default(""),
   coordinates: coordinatesSchema,
 });
 

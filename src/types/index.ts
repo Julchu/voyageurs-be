@@ -21,13 +21,11 @@ export type UserPreferences = {
   lastLocation?: Coordinates;
 };
 
-export const TripStatusValues = ["current", "previous"] as const;
-export type TripStatus = (typeof TripStatusValues)[number];
-
 export type TripStop = {
   publicId: string;
   name: string;
-  address: string;
+  streetAddress: string;
+  areaAddress: string;
   coordinates: Coordinates;
   position: number;
   visited: boolean;
@@ -37,7 +35,6 @@ export type TripStop = {
 export type Trip = {
   publicId: string;
   name: string;
-  status: TripStatus;
   stops: TripStop[];
 };
 
@@ -45,21 +42,24 @@ export type PlaceSearch = {
   publicId: string;
   query: string;
   name: string;
-  address: string;
+  streetAddress: string;
+  areaAddress: string;
   coordinates: Coordinates;
   searchedAt: string;
 };
 
 export type StopInput = {
   name: string;
-  address: string;
+  streetAddress: string;
+  areaAddress: string;
   coordinates: Coordinates;
 };
 
 export type PlaceSearchInput = {
   query: string;
   name: string;
-  address: string;
+  streetAddress: string;
+  areaAddress: string;
   coordinates: Coordinates;
 };
 

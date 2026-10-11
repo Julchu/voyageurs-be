@@ -1,5 +1,5 @@
-import { sql } from "drizzle-orm";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   check,
   doublePrecision,
@@ -21,7 +21,8 @@ export const placeSearchTable = pgTable(
       .notNull(),
     query: varchar({ length: 500 }).notNull(),
     name: varchar({ length: 255 }).notNull(),
-    address: varchar({ length: 500 }).notNull().default(""),
+    streetAddress: varchar("street_address", { length: 500 }).notNull().default(""),
+    areaAddress: varchar("area_address", { length: 500 }).notNull().default(""),
     latitude: doublePrecision().notNull(),
     longitude: doublePrecision().notNull(),
     ...timestamps,

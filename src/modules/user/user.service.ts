@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import { type InsertPublicUser, userTable } from "../../db/schemas/user.schema.ts";
 
+// TODO: user getter already fetches DB, why not reuse it
 export const getUserById = async (userId: number) => {
   try {
     return await db.query.userTable.findFirst({

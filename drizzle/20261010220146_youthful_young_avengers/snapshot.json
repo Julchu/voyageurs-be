@@ -1,20 +1,11 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "ff918a6f-ca4d-4127-9b8f-f4bfaa2b1370",
+  "id": "3040a4ba-3d74-4c78-8657-0d0a9a281f13",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
   "ddl": [
-    {
-      "values": [
-        "current",
-        "previous"
-      ],
-      "name": "trip_status",
-      "entityType": "enums",
-      "schema": "public"
-    },
     {
       "isRlsEnabled": false,
       "name": "place_searches",
@@ -127,7 +118,20 @@
       "default": "''",
       "generated": null,
       "identity": null,
-      "name": "address",
+      "name": "street_address",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "place_searches"
+    },
+    {
+      "type": "varchar(500)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "area_address",
       "entityType": "columns",
       "schema": "public",
       "table": "place_searches"
@@ -340,7 +344,20 @@
       "default": "''",
       "generated": null,
       "identity": null,
-      "name": "address",
+      "name": "street_address",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_stops"
+    },
+    {
+      "type": "varchar(500)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "area_address",
       "entityType": "columns",
       "schema": "public",
       "table": "trip_stops"
@@ -506,19 +523,6 @@
       "generated": null,
       "identity": null,
       "name": "name",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "trips"
-    },
-    {
-      "type": "trip_status",
-      "typeSchema": "public",
-      "notNull": true,
-      "dimensions": 0,
-      "default": "'current'",
-      "generated": null,
-      "identity": null,
-      "name": "status",
       "entityType": "columns",
       "schema": "public",
       "table": "trips"
@@ -866,27 +870,6 @@
       "method": "btree",
       "concurrently": false,
       "name": "trips_user_id_idx",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "trips"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "user_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": true,
-      "where": "\"status\" = 'current' AND \"deleted_at\" IS NULL",
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "trips_one_current_per_user",
       "entityType": "indexes",
       "schema": "public",
       "table": "trips"

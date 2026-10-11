@@ -21,6 +21,7 @@ type TokenClaims = {
   typ: TokenType;
 };
 
+// TODO: need to create seed data before being able to use MASTER_KEY
 export const allowsDevMasterKey = (token?: string) => {
   if (process.env.NODE_ENV !== "development" || !token) return false;
   const masterKey = process.env.MASTER_KEY;

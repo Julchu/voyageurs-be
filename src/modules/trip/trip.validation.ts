@@ -22,7 +22,8 @@ export const updateTripBodySchema = z
 
 export const stopBodySchema = z.object({
   name: z.string().trim().min(1).max(255),
-  address: z.string().trim().max(500).default(""),
+  streetAddress: z.string().trim().max(500).default(""),
+  areaAddress: z.string().trim().max(500).default(""),
   coordinates: coordinatesSchema,
 });
 

@@ -6,13 +6,14 @@ import {
   tripStopTable,
   tripTable,
 } from "../../db/schemas/trip.schema.ts";
-import type { StopInput, Trip, TripStatus } from "../../types";
+import type { StopInput, Trip } from "../../types";
 import type { UpdateTripBody } from "./trip.validation.ts";
 
 const toStop = (stop: SelectTripStop) => ({
   publicId: stop.publicId,
   name: stop.name,
-  address: stop.address,
+  streetAddress: stop.streetAddress,
+  areaAddress: stop.areaAddress,
   coordinates: { lat: stop.latitude, lng: stop.longitude },
   position: stop.position,
   visited: stop.visited,
@@ -22,7 +23,6 @@ const toStop = (stop: SelectTripStop) => ({
 const toTrip = (trip: SelectTrip, stops: SelectTripStop[]): Trip => ({
   publicId: trip.publicId,
   name: trip.name,
-  status: trip.status,
   stops: stops
     .filter((stop) => stop.deletedAt === null)
     .sort((left, right) => left.position - right.position)
@@ -59,12 +59,7 @@ const activeTrips = async (userId: number) => {
     stopsByTrip.set(stop.tripId, list);
   }
 
-  return trips
-    .map((trip) => toTrip(trip, stopsByTrip.get(trip.id) ?? []))
-    .sort((left, right) => {
-      if (left.status === right.status) return 0;
-      return left.status === "current" ? -1 : 1;
-    });
+  return trips.map((trip) => toTrip(trip, stopsByTrip.get(trip.id) ?? [])).sort();
 };
 
 const findOwnedTrip = async (userId: number, publicId: string) => {
@@ -95,15 +90,9 @@ export const createTrip = async (userId: number, name: string) => {
     await db.transaction(async (tx) => {
       await tx
         .update(tripTable)
-        .set({ status: "previous", updatedAt: new Date() })
-        .where(
-          and(
-            eq(tripTable.userId, userId),
-            eq(tripTable.status, "current"),
-            isNull(tripTable.deletedAt),
-          ),
-        );
-      await tx.insert(tripTable).values({ userId, name, status: "current" });
+        .set({ updatedAt: new Date() })
+        .where(and(eq(tripTable.userId, userId), isNull(tripTable.deletedAt)));
+      await tx.insert(tripTable).values({ userId, name });
     });
     return await activeTrips(userId);
   } catch (error) {
@@ -120,21 +109,14 @@ export const updateTrip = async (userId: number, publicId: string, patch: Update
       if (patch.status === "current") {
         await tx
           .update(tripTable)
-          .set({ status: "previous", updatedAt: new Date() })
-          .where(
-            and(
-              eq(tripTable.userId, userId),
-              eq(tripTable.status, "current"),
-              isNull(tripTable.deletedAt),
-            ),
-          );
+          .set({ updatedAt: new Date() })
+          .where(and(eq(tripTable.userId, userId), isNull(tripTable.deletedAt)));
       }
 
-      const values: { name?: string; status?: TripStatus; updatedAt: Date } = {
+      const values: { name?: string; updatedAt: Date } = {
         updatedAt: new Date(),
       };
       if (patch.name !== undefined) values.name = patch.name;
-      if (patch.status !== undefined) values.status = patch.status;
       await tx.update(tripTable).set(values).where(eq(tripTable.id, trip.id));
     });
     return await activeTrips(userId);
@@ -156,25 +138,21 @@ const insertStop = async (tripId: number, input: StopInput) => {
   await db.insert(tripStopTable).values({
     tripId,
     name: input.name,
-    address: input.address,
+    streetAddress: input.streetAddress,
+    areaAddress: input.areaAddress,
     latitude: input.coordinates.lat,
     longitude: input.coordinates.lng,
     position,
   });
 };
 
+// TODO: remove, save will be full sync of trip
 export const appendToCurrentTrip = async (userId: number, input: StopInput) => {
   try {
     const current = await db
       .select()
       .from(tripTable)
-      .where(
-        and(
-          eq(tripTable.userId, userId),
-          eq(tripTable.status, "current"),
-          isNull(tripTable.deletedAt),
-        ),
-      )
+      .where(and(eq(tripTable.userId, userId), isNull(tripTable.deletedAt)))
       .limit(1);
 
     const existing = current[0];
@@ -186,13 +164,14 @@ export const appendToCurrentTrip = async (userId: number, input: StopInput) => {
     await db.transaction(async (tx) => {
       const [created] = await tx
         .insert(tripTable)
-        .values({ userId, name: "Current trip", status: "current" })
+        .values({ userId, name: "Current trip" })
         .returning();
       if (!created) throw new Error("Trip was not created");
       await tx.insert(tripStopTable).values({
         tripId: created.id,
         name: input.name,
-        address: input.address,
+        streetAddress: input.streetAddress,
+        areaAddress: input.areaAddress,
         latitude: input.coordinates.lat,
         longitude: input.coordinates.lng,
         position: 0,
