@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "3040a4ba-3d74-4c78-8657-0d0a9a281f13",
+  "id": "432f22da-29b8-4043-b49b-99ffa9fdf47f",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -132,6 +132,19 @@
       "generated": null,
       "identity": null,
       "name": "area_address",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "place_searches"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "category",
       "entityType": "columns",
       "schema": "public",
       "table": "place_searches"
@@ -358,6 +371,19 @@
       "generated": null,
       "identity": null,
       "name": "area_address",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_stops"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "category",
       "entityType": "columns",
       "schema": "public",
       "table": "trip_stops"

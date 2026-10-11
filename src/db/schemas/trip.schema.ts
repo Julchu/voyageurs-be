@@ -40,6 +40,7 @@ export const tripStopTable = pgTable(
     name: varchar({ length: 255 }).notNull(),
     streetAddress: varchar("street_address", { length: 500 }).notNull().default(""),
     areaAddress: varchar("area_address", { length: 500 }).notNull().default(""),
+    category: varchar({ length: 255 }).notNull().default(""),
     latitude: doublePrecision().notNull(),
     longitude: doublePrecision().notNull(),
     position: integer().notNull(),

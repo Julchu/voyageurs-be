@@ -9,6 +9,7 @@ const toSearch = (row: typeof placeSearchTable.$inferSelect): PlaceSearch => ({
   name: row.name,
   streetAddress: row.streetAddress,
   areaAddress: row.areaAddress,
+  category: row.category,
   coordinates: { lat: row.latitude, lng: row.longitude },
   searchedAt: (row.createdAt ?? new Date()).toISOString(),
 });
@@ -37,6 +38,7 @@ export const logSearch = async (userId: number, input: PlaceSearchInput) => {
         name: input.name,
         streetAddress: input.streetAddress,
         areaAddress: input.areaAddress,
+        category: input.category,
         latitude: input.coordinates.lat,
         longitude: input.coordinates.lng,
       })
