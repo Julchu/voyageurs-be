@@ -6,13 +6,18 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx watch --env-file=.env.development src/index.ts",
+    "staging": "tsx watch --env-file=.env.staging src/index.ts",
     "type-check": "tsc --noEmit",
     "lint": "eslint",
     "db-generate": "drizzle-kit generate",
     "env-dev": "DATABASE_URL=$(grep DATABASE_URL -w .env.development | cut -d '=' -f2- | cut -d '\"' -f2 )",
+    "env-staging": "DATABASE_URL=$(grep DATABASE_URL -w .env.staging | cut -d '=' -f2- | cut -d '\"' -f2 )",
     "db-migrate-dev": "pnpm run env-dev drizzle-kit migrate",
     "db-push-dev": "pnpm run env-dev drizzle-kit push",
-    "db-studio-dev": "pnpm run env-dev drizzle-kit studio --port=8002 --config=./drizzle.config.ts"
+    "db-studio-dev": "pnpm run env-dev drizzle-kit studio --port=8002 --config=./drizzle.config.ts",
+    "db-migrate-staging": "pnpm run env-staging drizzle-kit migrate",
+    "db-push-staging": "pnpm run env-staging drizzle-kit push",
+    "db-studio-staging": "pnpm run env-staging drizzle-kit studio --port=8002 --config=./drizzle.config.ts"
   },
   "dependencies": {
     "cookie-parser": "~1.4.4",
