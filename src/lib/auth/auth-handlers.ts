@@ -102,6 +102,7 @@ export const verifyGoogleCode = async (code: string, codeVerifier: string) => {
   if (!payload?.email_verified || !payload.email) return;
 
   return {
+    // googleSub: payload.sub,
     email: payload.email,
     name: payload.name,
     picture: payload.picture,
@@ -198,10 +199,12 @@ export const loginWithGoogleCode = async (code?: string, codeVerifier?: string) 
   const account = await verifyGoogleCode(code, codeVerifier);
   if (!account?.email || !account.name) return;
 
+  // TODO: Match by verified googleSub after migration; safely link existing accounts first.
   let fetchedUser = await getUserByEmail(account.email);
 
   if (!fetchedUser) {
     const [newUser] = await insertUser({
+      // googleSub: account.googleSub,
       email: account.email,
       name: account.name,
       image: account.picture,

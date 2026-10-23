@@ -14,6 +14,8 @@ export const userTable = pgTable(
     ...requiredColumns,
     name: varchar({ length: 255 }).notNull(),
     email: varchar({ length: 255 }).unique().notNull(),
+    // TODO: Migrate existing Google accounts before enabling this identity field.
+    // googleSub: varchar({ length: 255 }).unique(),
     image: varchar({ length: 255 }),
     preferences: jsonb()
       .$type<UserPreferences>()
