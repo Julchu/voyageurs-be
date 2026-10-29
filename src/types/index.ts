@@ -23,6 +23,7 @@ export type UserPreferences = {
 
 export type TripStop = {
   publicId: string;
+  mapboxId?: string;
   name: string;
   streetAddress: string;
   areaAddress: string;
@@ -48,14 +49,6 @@ export type PlaceSearch = {
   category: string;
   coordinates: Coordinates;
   searchedAt: string;
-};
-
-export type StopInput = {
-  name: string;
-  streetAddress: string;
-  areaAddress: string;
-  category: string;
-  coordinates: Coordinates;
 };
 
 export type PlaceSearchInput = {

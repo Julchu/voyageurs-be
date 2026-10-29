@@ -7,20 +7,9 @@ const coordinatesSchema = z.object({
   lng: z.number().gte(-180).lte(180),
 });
 
-export const createTripBodySchema = z.object({
-  name: z.string().trim().min(1).max(255).optional(),
-});
-
-export const updateTripBodySchema = z
-  .object({
-    name: z.string().trim().min(1).max(255).optional(),
-    status: z.enum(["current", "previous"]).optional(),
-  })
-  .refine((value) => value.name !== undefined || value.status !== undefined, {
-    message: "Nothing to update",
-  });
-
-export const stopBodySchema = z.object({
+const tripStopBodySchema = z.object({
+  publicId: publicIdSchema.optional(),
+  mapboxId: z.string().trim().min(1).max(1024).optional(),
   name: z.string().trim().min(1).max(255),
   streetAddress: z.string().trim().max(500).default(""),
   areaAddress: z.string().trim().max(500).default(""),
@@ -28,13 +17,26 @@ export const stopBodySchema = z.object({
   coordinates: coordinatesSchema,
 });
 
-export const reorderBodySchema = z.object({
-  publicIds: z.array(publicIdSchema),
+// Array order determines positions. Full saves preserve stored visited state.
+const stopsSchema = z.array(tripStopBodySchema).max(1000).refine((stops) => {
+  const ids = stops.flatMap((stop) => {
+    const id = stop.publicId;
+    return id ? [id] : [];
+  });
+  return new Set(ids).size === ids.length;
+}, { message: "Duplicate stop IDs" });
+
+export const createTripBodySchema = z.object({
+  name: z.string().trim().min(1).max(255).default("Current trip"),
+  stops: stopsSchema.default([]),
 });
 
-export const visitedBodySchema = z.object({
-  visited: z.boolean(),
-});
+export const updateTripBodySchema = createTripBodySchema
+  .partial()
+  .refine((value) => value.name !== undefined || value.stops !== undefined, {
+    message: "Nothing to update",
+  });
 
-export type StopBody = z.infer<typeof stopBodySchema>;
+export type TripStopBody = z.infer<typeof tripStopBodySchema>;
+export type CreateTripBody = z.infer<typeof createTripBodySchema>;
 export type UpdateTripBody = z.infer<typeof updateTripBodySchema>;

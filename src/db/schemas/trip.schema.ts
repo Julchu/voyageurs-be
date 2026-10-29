@@ -37,6 +37,7 @@ export const tripStopTable = pgTable(
     tripId: integer("trip_id")
       .references(() => tripTable.id, { onDelete: "cascade" })
       .notNull(),
+    mapboxId: varchar("mapbox_id", { length: 1024 }),
     name: varchar({ length: 255 }).notNull(),
     streetAddress: varchar("street_address", { length: 500 }).notNull().default(""),
     areaAddress: varchar("area_address", { length: 500 }).notNull().default(""),
