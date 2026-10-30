@@ -11,13 +11,8 @@ searchRouter.get("/", async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  try {
-    const searches = await listSearches(req.userId);
-    res.json({ success: true, data: searches });
-  } catch (error) {
-    console.error("Failed to list searches", error);
-    res.status(500).json({ success: false, error: "Internal Server Error" });
-  }
+  const searches = await listSearches(req.userId);
+  res.json({ success: true, data: searches });
 });
 
 searchRouter.post("/", async (req: AuthRequest, res: Response) => {
@@ -32,11 +27,6 @@ searchRouter.post("/", async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  try {
-    const search = await logSearch(req.userId, parsed.data);
-    res.status(201).json({ success: true, data: search });
-  } catch (error) {
-    console.error("Failed to log search", error);
-    res.status(500).json({ success: false, error: "Internal Server Error" });
-  }
+  const search = await logSearch(req.userId, parsed.data);
+  res.status(201).json({ success: true, data: search });
 });

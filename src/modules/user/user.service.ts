@@ -34,14 +34,18 @@ export const insertUser = async (user: InsertPublicUser) => {
 };
 
 export const updateUser = async (userId: number, updatedUser: InsertPublicUser) => {
-  const { email, ...userInfo } = updatedUser;
+  const { email, name, image, preferences } = updatedUser;
   try {
     const existingUser = await db.query.userTable.findFirst({
       where: { id: userId, email },
     });
 
     if (existingUser)
-      return await db.update(userTable).set(userInfo).where(eq(userTable.id, userId)).returning();
+      return await db
+        .update(userTable)
+        .set({ name, image, preferences })
+        .where(eq(userTable.id, userId))
+        .returning();
   } catch (error) {
     throw new Error("Error updating user", { cause: error });
   }

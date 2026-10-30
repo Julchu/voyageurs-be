@@ -1,9 +1,10 @@
 import cookieParser from "cookie-parser";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import rateLimit from "express-rate-limit";
-import createError, { type HttpError } from "http-errors";
+import createError from "http-errors";
 import logger from "morgan";
 import { userSetter } from "./lib/auth/auth-handlers.ts";
+import { errorHandler } from "./middleware/error-handler.ts";
 import { geoRouter } from "./modules/geo/geo.routes.ts";
 import { searchRouter } from "./modules/search/search.routes.ts";
 import { tripRouter } from "./modules/trip/trip.routes.ts";
@@ -28,6 +29,7 @@ const limiter = rateLimit({
   limit: 1000,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  message: { success: false, error: "Too many requests, please try again later." },
 });
 
 const authLimiter = rateLimit({
@@ -35,6 +37,7 @@ const authLimiter = rateLimit({
   limit: 30,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  message: { success: false, error: "Too many requests, please try again later." },
 });
 
 app.use("/user/login", authLimiter);
@@ -59,11 +62,6 @@ app.use((_req: Request, _res: Response, next: NextFunction) => {
   next(createError(404));
 });
 
-app.use((err: HttpError, req: Request, res: Response, _next: NextFunction) => {
-  res.locals.message = err.message;
-  res.locals.error = req.app.get("env") === "development" ? err : {};
-
-  res.status(err.status || 500).json({ message: err.message });
-});
+app.use(errorHandler);
 
 export default app;

@@ -11,6 +11,7 @@ import {
 } from "../../lib/auth/auth-handlers.ts";
 import type { AuthRequest } from "../../types";
 import { getUserById, updateUser } from "./user.service.ts";
+import { toUserDto } from "./user.mapper.ts";
 
 export const userRouter: Router = createRouter();
 
@@ -20,13 +21,8 @@ userRouter.get("/", userSetter, async (req: AuthRequest, res) => {
     return;
   }
 
-  try {
-    const user = await getUserById(req.userId);
-    res.json({ success: true, data: user });
-  } catch (error) {
-    console.error("Failed to get user", error);
-    res.status(500).json({ success: false, error: "Internal Server Error" });
-  }
+  const user = await getUserById(req.userId);
+  res.json({ success: true, data: user ? toUserDto(user) : null });
 });
 
 userRouter.patch(
@@ -38,16 +34,11 @@ userRouter.patch(
       return;
     }
 
-    try {
-      const updatedUser = await updateUser(req.userId, req.body.user);
-      res.status(200).json({
-        success: true,
-        data: updatedUser,
-      });
-    } catch (error) {
-      console.error("Failed to update user", error);
-      res.status(500).json({ success: false, error: "Internal Server Error" });
-    }
+    const updatedUser = await updateUser(req.userId, req.body.user);
+    res.status(200).json({
+      success: true,
+      data: updatedUser?.map(toUserDto) ?? [],
+    });
   },
 );
 
@@ -60,47 +51,37 @@ userRouter.post("/login/google", async (req, res) => {
     return;
   }
 
-  try {
-    const tokens = await loginWithGoogleCode(code, codeVerifier);
+  const tokens = await loginWithGoogleCode(code, codeVerifier);
 
-    if (!tokens?.refreshToken) {
-      res.status(401).json({ success: false, error: "Unauthorized" });
-      return;
-    }
-
-    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-    res.status(200).json({ success: true });
-  } catch (error) {
-    console.error("Failed to login", error instanceof Error ? error.name : "unknown");
-    res.status(500).json({ success: false, error: "Internal Server Error" });
+  if (!tokens?.refreshToken) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
   }
+
+  setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+  res.status(200).json({ success: true });
 });
 
 userRouter.post("/refresh", async (req, res) => {
   const token = bearerToken(req.header("Authorization"));
 
-  try {
-    const refreshed = await refreshSession(token);
+  const refreshed = await refreshSession(token);
 
-    if (!refreshed) {
-      clearAuthCookies(res);
-      res.status(401).json({ success: false, error: "Unauthorized" });
-      return;
-    }
-
-    setAuthCookies(res, refreshed.accessToken);
-    res.status(200).json({ success: true });
-  } catch (error) {
-    console.error("Failed to refresh session", error instanceof Error ? error.name : "unknown");
-    res.status(500).json({ success: false, error: "Internal Server Error" });
+  if (!refreshed) {
+    clearAuthCookies(res);
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
   }
+
+  setAuthCookies(res, refreshed.accessToken);
+  res.status(200).json({ success: true });
 });
 
 userRouter.post("/logout", async (req, res) => {
   const accessToken = bearerToken(req.header("Authorization"));
   const refreshToken = req.header("x-refresh-token")?.trim();
 
-  await logoutSession(accessToken, refreshToken);
   clearAuthCookies(res);
+  await logoutSession(accessToken, refreshToken);
   res.status(200).json({ success: true, data: null });
 });

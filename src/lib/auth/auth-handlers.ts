@@ -19,6 +19,7 @@ type TokenType = "access" | "refresh";
 type TokenClaims = {
   userId: number;
   typ: TokenType;
+  sid?: string;
 };
 
 // TODO: need to create seed data before being able to use MASTER_KEY
@@ -49,7 +50,7 @@ const verifySignedToken = async (
   secret: string | undefined,
   secretName: string,
   expectedType: TokenType,
-): Promise<{ userId: number; jti?: string } | undefined> => {
+): Promise<{ userId: number; jti?: string; sid?: string } | undefined> => {
   const key = hmacKey(secret, secretName);
   if (!key) return;
 
@@ -63,7 +64,11 @@ const verifySignedToken = async (
     if (payload.typ !== expectedType) return;
     if (typeof payload.userId !== "number") return;
 
-    return { userId: payload.userId, jti: payload.jti };
+    return {
+      userId: payload.userId,
+      jti: payload.jti,
+      sid: typeof payload.sid === "string" ? payload.sid : undefined,
+    };
   } catch (error) {
     if (error instanceof joseErrors.JOSEError) return;
     throw error;
@@ -124,7 +129,12 @@ export const verifyAccessToken = async (token?: string) => {
     "JWT_ACCESS_SECRET",
     "access",
   );
-  if (!payload) return;
+  if (!payload?.sid) return;
+  const stillCurrent = await refreshTokenIsCurrent({
+    userId: payload.userId,
+    jti: payload.sid,
+  });
+  if (!stillCurrent) return;
   return { userId: payload.userId };
 };
 
@@ -144,11 +154,14 @@ export const verifyRefreshToken = async (token?: string) => {
 export const createTokens = async ({
   userId,
   refreshToken = false,
+  sessionId,
 }: {
   userId: number;
   refreshToken?: boolean;
+  sessionId?: string;
 }) => {
-  if (!userId) return;
+  const sid = refreshToken ? crypto.randomUUID() : sessionId;
+  if (!userId || !sid) return;
 
   const accessKey = hmacKey(process.env.JWT_ACCESS_SECRET, "JWT_ACCESS_SECRET");
   if (!accessKey) return;
@@ -157,6 +170,7 @@ export const createTokens = async ({
   const accessToken = await new SignJWT({
     userId,
     typ: "access",
+    sid,
   } satisfies TokenClaims)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuer(JWT_ISSUER)
@@ -170,13 +184,7 @@ export const createTokens = async ({
   const refreshKey = hmacKey(process.env.JWT_REFRESH_SECRET, "JWT_REFRESH_SECRET");
   if (!refreshKey) return;
 
-  const jti = crypto.randomUUID();
   const refreshExpiresAt = new Date(Date.now() + REFRESH_MAX_AGE_MS);
-  await storeRefreshToken({
-    userId,
-    jti,
-    expiresAt: refreshExpiresAt,
-  });
 
   const signedRefreshToken = await new SignJWT({
     userId,
@@ -185,10 +193,16 @@ export const createTokens = async ({
     .setProtectedHeader({ alg: "HS256" })
     .setIssuer(JWT_ISSUER)
     .setAudience(JWT_AUDIENCE)
-    .setJti(jti)
+    .setJti(sid)
     .setIssuedAt()
     .setExpirationTime(Math.floor(refreshExpiresAt.getTime() / 1000))
     .sign(refreshKey);
+
+  await storeRefreshToken({
+    userId,
+    jti: sid,
+    expiresAt: refreshExpiresAt,
+  });
 
   return { accessToken, refreshToken: signedRefreshToken };
 };
@@ -229,42 +243,33 @@ export const refreshSession = async (token?: string) => {
   const stillCurrent = await refreshTokenIsCurrent(current);
   if (!stillCurrent) return;
 
-  return createTokens({ userId: current.userId });
+  return createTokens({ userId: current.userId, sessionId: current.jti });
 };
 
 export const logoutSession = async (accessToken?: string, refreshToken?: string) => {
-  try {
-    const session =
-      (await verifyRefreshToken(refreshToken)) ??
-      (allowsDevMasterKey(accessToken) ? undefined : await verifyAccessToken(accessToken));
+  const session =
+    (await verifyRefreshToken(refreshToken)) ??
+    (allowsDevMasterKey(accessToken) ? undefined : await verifyAccessToken(accessToken));
 
-    if (session) await revokeUserRefreshTokens(session.userId);
-  } catch (error) {
-    console.error("Failed to revoke session", error instanceof Error ? error.name : "unknown");
-  }
+  if (session) await revokeUserRefreshTokens(session.userId);
 };
 
 export const userSetter = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const token = bearerToken(req.header("Authorization"));
+  const token = bearerToken(req.header("Authorization"));
 
-    if (!token) {
-      res.status(401).json({ success: false, error: "Missing access token" });
-      return;
-    }
-
-    const auth = await verifyAccessToken(token);
-    if (!auth) {
-      res.status(401).json({ success: false, error: "Unauthorized" });
-      return;
-    }
-
-    req.userId = auth.userId;
-    next();
-  } catch (error) {
-    console.error("Auth failed", error instanceof Error ? error.name : "unknown");
-    res.status(500).json({ success: false, error: "Internal Server Error" });
+  if (!token) {
+    res.status(401).json({ success: false, error: "Missing access token" });
+    return;
   }
+
+  const auth = await verifyAccessToken(token);
+  if (!auth) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
+  }
+
+  req.userId = auth.userId;
+  next();
 };
 
 const cookieOptions = (maxAge?: number) => ({
