@@ -28,6 +28,7 @@ CREATE TABLE "trip_stops" (
 	"id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY (sequence name "trip_stops_id_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1),
 	"public_id" uuid DEFAULT gen_random_uuid() NOT NULL,
 	"trip_id" integer NOT NULL,
+	"mapbox_id" varchar(1024),
 	"name" varchar(255) NOT NULL,
 	"street_address" varchar(500) DEFAULT '' NOT NULL,
 	"area_address" varchar(500) DEFAULT '' NOT NULL,
@@ -49,6 +50,7 @@ CREATE TABLE "trips" (
 	"public_id" uuid DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" integer NOT NULL,
 	"name" varchar(255) NOT NULL,
+	"version" integer DEFAULT 1 NOT NULL,
 	"updated_at" timestamp,
 	"created_at" timestamp DEFAULT now(),
 	"deleted_at" timestamp

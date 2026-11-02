@@ -21,27 +21,10 @@ export type UserPreferences = {
   lastLocation?: Coordinates;
 };
 
-export type TripStop = {
-  publicId: string;
-  mapboxId?: string;
-  name: string;
-  streetAddress: string;
-  areaAddress: string;
-  category: string;
-  coordinates: Coordinates;
-  position: number;
-  visited: boolean;
-  visitedAt: string | null;
-};
-
-export type Trip = {
-  publicId: string;
-  name: string;
-  stops: TripStop[];
-};
-
 export type PlaceSearch = {
   publicId: string;
+  createdAt: string | null;
+  updatedAt: string | null;
   query: string;
   name: string;
   streetAddress: string;
@@ -61,12 +44,14 @@ export type PlaceSearchInput = {
 };
 
 export interface User {
-  id: number;
   publicId: string;
+  createdAt: string | null;
+  updatedAt: string | null;
   email: string;
   image?: string | null;
   name: string;
   preferences?: UserPreferences;
+  lastLocation?: Coordinates;
 }
 
 export type AuthRequest<

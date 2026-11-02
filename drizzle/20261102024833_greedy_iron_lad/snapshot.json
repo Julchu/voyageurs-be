@@ -1,9 +1,9 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "f536d390-d7b6-4e91-b0a8-8fb405f051f7",
+  "id": "b5e7e0ff-2de8-43d4-9324-4c5ad6325c6c",
   "prevIds": [
-    "432f22da-29b8-4043-b49b-99ffa9fdf47f"
+    "00000000-0000-0000-0000-000000000000"
   ],
   "ddl": [
     {
@@ -562,6 +562,19 @@
       "generated": null,
       "identity": null,
       "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trips"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "name": "version",
       "entityType": "columns",
       "schema": "public",
       "table": "trips"

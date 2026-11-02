@@ -1,1 +1,0 @@
-ALTER TABLE "trip_stops" ADD COLUMN "mapbox_id" varchar(1024);

@@ -5,6 +5,8 @@ import type { PlaceSearch, PlaceSearchInput } from "../../types";
 
 const toSearch = (row: typeof placeSearchTable.$inferSelect): PlaceSearch => ({
   publicId: row.publicId,
+  createdAt: row.createdAt?.toISOString() ?? null,
+  updatedAt: row.updatedAt?.toISOString() ?? null,
   query: row.query,
   name: row.name,
   streetAddress: row.streetAddress,

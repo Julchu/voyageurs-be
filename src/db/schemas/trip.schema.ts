@@ -22,6 +22,7 @@ export const tripTable = pgTable(
       .references(() => userTable.id, { onDelete: "cascade" })
       .notNull(),
     name: varchar({ length: 255 }).notNull(),
+    version: integer().notNull().default(1),
     ...timestamps,
   },
   (table) => [
