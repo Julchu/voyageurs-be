@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { CreateTripInput, TripStopInput, UpdateTripInput } from "./trip.types.ts";
 
 export const publicIdSchema = z.string().uuid();
 
@@ -15,27 +16,44 @@ const tripStopBodySchema = z.object({
   areaAddress: z.string().trim().max(500).default(""),
   category: z.string().trim().max(255).default(""),
   coordinates: coordinatesSchema,
-});
+}) satisfies z.ZodType<TripStopInput>;
 
 // Array order determines positions. Full saves preserve stored visited state.
-const stopsSchema = z.array(tripStopBodySchema).max(1000).refine((stops) => {
-  const ids = stops.flatMap((stop) => {
-    const id = stop.publicId;
-    return id ? [id] : [];
-  });
-  return new Set(ids).size === ids.length;
-}, { message: "Duplicate stop IDs" });
+const stopsSchema = z
+  .array(tripStopBodySchema)
+  .max(1000)
+  .refine(
+    (stops) => {
+      const ids = stops.flatMap((stop) => {
+        const id = stop.publicId;
+        return id ? [id] : [];
+      });
+      return new Set(ids).size === ids.length;
+    },
+    { message: "Duplicate stop IDs" },
+  );
 
-export const createTripBodySchema = z.object({
+const tripBodySchema = z.object({
   name: z.string().trim().min(1).max(255).default("Current trip"),
   stops: stopsSchema.default([]),
 });
 
-export const updateTripBodySchema = createTripBodySchema
+export const createTripBodySchema = tripBodySchema.refine(
+  (value) => value.stops.every((stop) => !stop.publicId),
+  { message: "New trips cannot contain saved stop IDs" },
+) satisfies z.ZodType<CreateTripInput>;
+
+export const updateTripBodySchema = tripBodySchema
   .partial()
+  .extend({ version: z.number().int().positive().safe() })
   .refine((value) => value.name !== undefined || value.stops !== undefined, {
     message: "Nothing to update",
-  });
+  }) satisfies z.ZodType<UpdateTripInput>;
+
+export const publicIdFrom = (value: string | undefined) => {
+  const parsed = publicIdSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+};
 
 export type TripStopBody = z.infer<typeof tripStopBodySchema>;
 export type CreateTripBody = z.infer<typeof createTripBodySchema>;

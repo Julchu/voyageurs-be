@@ -1,272 +1,118 @@
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "../../db";
+import type { SelectTripStop } from "../../db/schemas/trip.schema.ts";
+import { ConflictError, ValidationError } from "../../lib/errors.ts";
+import { toTripDto } from "./trip.mapper.ts";
 import {
-  type SelectTrip,
-  type SelectTripStop,
-  tripStopTable,
-  tripTable,
-} from "../../db/schemas/trip.schema.ts";
-import type { StopInput, Trip } from "../../types";
-import type { UpdateTripBody } from "./trip.validation.ts";
+  findActiveStopsForTrips,
+  findActiveTrips,
+  findActiveTripStops,
+  findOwnedTripForUpdate,
+  insertTrip,
+  insertTripStops,
+  softDeleteTripStops,
+  type TripStopValues,
+  type TripTransaction,
+  updateTripDetails,
+  updateTripStops,
+} from "./trip.queries.ts";
+import type { TripDto } from "./trip.types.ts";
+import type { CreateTripBody, TripStopBody, UpdateTripBody } from "./trip.validation.ts";
 
-const toStop = (stop: SelectTripStop) => ({
-  publicId: stop.publicId,
-  name: stop.name,
-  streetAddress: stop.streetAddress,
-  areaAddress: stop.areaAddress,
-  category: stop.category,
-  coordinates: { lat: stop.latitude, lng: stop.longitude },
-  position: stop.position,
-  visited: stop.visited,
-  visitedAt: stop.visitedAt ? stop.visitedAt.toISOString() : null,
-});
-
-const toTrip = (trip: SelectTrip, stops: SelectTripStop[]): Trip => ({
-  publicId: trip.publicId,
-  name: trip.name,
-  stops: stops
-    .filter((stop) => stop.deletedAt === null)
-    .sort((left, right) => left.position - right.position)
-    .map(toStop),
-});
-
-const activeTrips = async (userId: number) => {
-  const trips = await db
-    .select()
-    .from(tripTable)
-    .where(and(eq(tripTable.userId, userId), isNull(tripTable.deletedAt)))
-    .orderBy(desc(tripTable.createdAt));
-
+// Restore a user's saved trips by returning active trips with their ordered stops.
+export const listTrips = async (userId: number): Promise<TripDto[]> => {
+  const trips = await findActiveTrips(userId);
   if (trips.length === 0) return [];
 
-  const stops = await db
-    .select()
-    .from(tripStopTable)
-    .where(
-      and(
-        inArray(
-          tripStopTable.tripId,
-          trips.map((trip) => trip.id),
-        ),
-        isNull(tripStopTable.deletedAt),
-      ),
-    )
-    .orderBy(asc(tripStopTable.position));
-
+  const stops = await findActiveStopsForTrips(trips.map((trip) => trip.id));
   const stopsByTrip = new Map<number, SelectTripStop[]>();
   for (const stop of stops) {
     const list = stopsByTrip.get(stop.tripId) ?? [];
     list.push(stop);
     stopsByTrip.set(stop.tripId, list);
   }
-
-  return trips.map((trip) => toTrip(trip, stopsByTrip.get(trip.id) ?? [])).sort();
+  return trips.map((trip) => toTripDto(trip, stopsByTrip.get(trip.id) ?? []));
 };
 
-const findOwnedTrip = async (userId: number, publicId: string) => {
-  const [trip] = await db
-    .select()
-    .from(tripTable)
-    .where(
-      and(
-        eq(tripTable.userId, userId),
-        eq(tripTable.publicId, publicId),
-        isNull(tripTable.deletedAt),
-      ),
-    )
-    .limit(1);
-  return trip;
-};
+// Keep stop writes consistent by mapping input fields and list order to database values.
+const stopValues = (input: TripStopBody, position: number): TripStopValues => ({
+  mapboxId: input.mapboxId ?? null,
+  name: input.name,
+  streetAddress: input.streetAddress,
+  areaAddress: input.areaAddress,
+  category: input.category,
+  latitude: input.coordinates.lat,
+  longitude: input.coordinates.lng,
+  position,
+});
 
-export const listTrips = async (userId: number) => {
-  try {
-    return await activeTrips(userId);
-  } catch (error) {
-    throw new Error("Error listing trips", { cause: error });
+// Preserve stop identities and visit history when syncing a full list; the caller must hold the trip lock.
+const syncTripStops = async (tx: TripTransaction, tripId: number, inputs: TripStopBody[]) => {
+  const existing = await findActiveTripStops(tx, tripId);
+  const known = new Map(existing.map((stop) => [stop.publicId, stop]));
+  const retained = new Set<string>();
+  const added: TripStopValues[] = [];
+  const changed: (TripStopValues & { publicId: string })[] = [];
+
+  for (const [position, input] of inputs.entries()) {
+    const values = stopValues(input, position);
+    if (!input.publicId) {
+      added.push(values);
+      continue;
+    }
+    const stored = known.get(input.publicId);
+    if (!stored) throw new ValidationError("A stop does not belong to this trip");
+    retained.add(input.publicId);
+    if (
+      (Object.keys(values) as (keyof TripStopValues)[]).some((key) => values[key] !== stored[key])
+    ) {
+      changed.push({ ...values, publicId: input.publicId });
+    }
   }
+
+  const removed = existing
+    .filter((stop) => !retained.has(stop.publicId))
+    .map((stop) => stop.publicId);
+  if (!added.length && !changed.length && !removed.length)
+    return { stops: existing, changed: false };
+
+  await insertTripStops(tx, tripId, added);
+  await updateTripStops(tx, tripId, changed);
+  await softDeleteTripStops(tx, tripId, removed);
+  return { stops: await findActiveTripStops(tx, tripId), changed: true };
 };
 
-export const createTrip = async (userId: number, name: string) => {
-  try {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(tripTable)
-        .set({ updatedAt: new Date() })
-        .where(and(eq(tripTable.userId, userId), isNull(tripTable.deletedAt)));
-      await tx.insert(tripTable).values({ userId, name });
-    });
-    return await activeTrips(userId);
-  } catch (error) {
-    throw new Error("Error creating trip", { cause: error });
-  }
-};
-
-export const updateTrip = async (userId: number, publicId: string, patch: UpdateTripBody) => {
-  const trip = await findOwnedTrip(userId, publicId);
-  if (!trip) return;
-
-  try {
-    await db.transaction(async (tx) => {
-      if (patch.status === "current") {
-        await tx
-          .update(tripTable)
-          .set({ updatedAt: new Date() })
-          .where(and(eq(tripTable.userId, userId), isNull(tripTable.deletedAt)));
-      }
-
-      const values: { name?: string; updatedAt: Date } = {
-        updatedAt: new Date(),
-      };
-      if (patch.name !== undefined) values.name = patch.name;
-      await tx.update(tripTable).set(values).where(eq(tripTable.id, trip.id));
-    });
-    return await activeTrips(userId);
-  } catch (error) {
-    throw new Error("Error updating trip", { cause: error });
-  }
-};
-
-const nextPosition = async (tripId: number) => {
-  const stops = await db
-    .select({ position: tripStopTable.position })
-    .from(tripStopTable)
-    .where(and(eq(tripStopTable.tripId, tripId), isNull(tripStopTable.deletedAt)));
-  return stops.reduce((max, stop) => Math.max(max, stop.position), -1) + 1;
-};
-
-const insertStop = async (tripId: number, input: StopInput) => {
-  const position = await nextPosition(tripId);
-  await db.insert(tripStopTable).values({
-    tripId,
-    name: input.name,
-    streetAddress: input.streetAddress,
-    areaAddress: input.areaAddress,
-    category: input.category,
-    latitude: input.coordinates.lat,
-    longitude: input.coordinates.lng,
-    position,
+// Save a new itinerary together by creating its trip and stops in one transaction.
+export const createTrip = (userId: number, input: CreateTripBody): Promise<TripDto> =>
+  db.transaction(async (tx) => {
+    const created = await insertTrip(tx, userId, input.name);
+    if (!created) throw new Error("Trip was not created");
+    const stops = await insertTripStops(tx, created.id, input.stops.map(stopValues));
+    return toTripDto(created, stops);
   });
-};
 
-// TODO: remove, save will be full sync of trip
-export const appendToCurrentTrip = async (userId: number, input: StopInput) => {
-  try {
-    const current = await db
-      .select()
-      .from(tripTable)
-      .where(and(eq(tripTable.userId, userId), isNull(tripTable.deletedAt)))
-      .limit(1);
-
-    const existing = current[0];
-    if (existing) {
-      await insertStop(existing.id, input);
-      return await activeTrips(userId);
+// Prevent stale saves from overwriting newer edits by checking the version before updating a locked trip.
+export const updateTrip = (
+  userId: number,
+  publicId: string,
+  patch: UpdateTripBody,
+): Promise<TripDto | undefined> =>
+  db.transaction(async (tx) => {
+    const owned = await findOwnedTripForUpdate(tx, userId, publicId);
+    if (!owned) return;
+    if (patch.version !== owned.version) {
+      throw new ConflictError(
+        "This trip changed elsewhere. Reload and restore the latest saved trip before editing.",
+      );
     }
 
-    await db.transaction(async (tx) => {
-      const [created] = await tx
-        .insert(tripTable)
-        .values({ userId, name: "Current trip" })
-        .returning();
-      if (!created) throw new Error("Trip was not created");
-      await tx.insert(tripStopTable).values({
-        tripId: created.id,
-        name: input.name,
-        streetAddress: input.streetAddress,
-        areaAddress: input.areaAddress,
-        category: input.category,
-        latitude: input.coordinates.lat,
-        longitude: input.coordinates.lng,
-        position: 0,
-      });
-    });
-    return await activeTrips(userId);
-  } catch (error) {
-    throw new Error("Error adding stop", { cause: error });
-  }
-};
+    const result =
+      patch.stops === undefined
+        ? { stops: await findActiveTripStops(tx, owned.id), changed: false }
+        : await syncTripStops(tx, owned.id, patch.stops);
+    const name = patch.name ?? owned.name;
+    if (name === owned.name && !result.changed) return toTripDto(owned, result.stops);
 
-export const reorderStops = async (userId: number, publicId: string, publicIds: string[]) => {
-  const trip = await findOwnedTrip(userId, publicId);
-  if (!trip) return;
-
-  const stops = await db
-    .select()
-    .from(tripStopTable)
-    .where(and(eq(tripStopTable.tripId, trip.id), isNull(tripStopTable.deletedAt)));
-
-  const known = new Set(stops.map((stop) => stop.publicId));
-  if (publicIds.length !== stops.length || publicIds.some((id) => !known.has(id))) return "invalid";
-
-  try {
-    await db.transaction(async (tx) => {
-      for (const [position, stopPublicId] of publicIds.entries()) {
-        await tx
-          .update(tripStopTable)
-          .set({ position, updatedAt: new Date() })
-          .where(and(eq(tripStopTable.tripId, trip.id), eq(tripStopTable.publicId, stopPublicId)));
-      }
-      await tx.update(tripTable).set({ updatedAt: new Date() }).where(eq(tripTable.id, trip.id));
-    });
-    return await activeTrips(userId);
-  } catch (error) {
-    throw new Error("Error reordering stops", { cause: error });
-  }
-};
-
-export const setStopVisited = async (
-  userId: number,
-  tripPublicId: string,
-  stopPublicId: string,
-  visited: boolean,
-) => {
-  const trip = await findOwnedTrip(userId, tripPublicId);
-  if (!trip) return;
-
-  try {
-    const updated = await db
-      .update(tripStopTable)
-      .set({
-        visited,
-        visitedAt: visited ? new Date() : null,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(tripStopTable.tripId, trip.id),
-          eq(tripStopTable.publicId, stopPublicId),
-          isNull(tripStopTable.deletedAt),
-        ),
-      )
-      .returning({ id: tripStopTable.id });
-
-    if (updated.length === 0) return;
-    return await activeTrips(userId);
-  } catch (error) {
-    throw new Error("Error updating stop", { cause: error });
-  }
-};
-
-export const removeStop = async (userId: number, tripPublicId: string, stopPublicId: string) => {
-  const trip = await findOwnedTrip(userId, tripPublicId);
-  if (!trip) return;
-
-  try {
-    const removed = await db
-      .update(tripStopTable)
-      .set({ deletedAt: new Date(), updatedAt: new Date() })
-      .where(
-        and(
-          eq(tripStopTable.tripId, trip.id),
-          eq(tripStopTable.publicId, stopPublicId),
-          isNull(tripStopTable.deletedAt),
-        ),
-      )
-      .returning({ id: tripStopTable.id });
-
-    if (removed.length === 0) return;
-    return await activeTrips(userId);
-  } catch (error) {
-    throw new Error("Error removing stop", { cause: error });
-  }
-};
+    const updated = await updateTripDetails(tx, owned.id, name);
+    if (!updated) throw new Error("Trip was not updated");
+    return toTripDto(updated, result.stops);
+  });
