@@ -1,6 +1,6 @@
 import { db } from "../../db";
 import type { SelectTripStop } from "../../db/schemas/trip.schema.ts";
-import { ConflictError, ValidationError } from "../../lib/errors.ts";
+import { badRequest, conflict } from "../../lib/errors.ts";
 import { toTripDto } from "./trip.mapper.ts";
 import {
   findActiveStopsForTrips,
@@ -60,7 +60,7 @@ const syncTripStops = async (tx: TripTransaction, tripId: number, inputs: TripSt
       continue;
     }
     const stored = known.get(input.publicId);
-    if (!stored) throw new ValidationError("A stop does not belong to this trip");
+    if (!stored) throw badRequest("A stop does not belong to this trip");
     retained.add(input.publicId);
     if (
       (Object.keys(values) as (keyof TripStopValues)[]).some((key) => values[key] !== stored[key])
@@ -100,7 +100,7 @@ export const updateTrip = (
     const owned = await findOwnedTripForUpdate(tx, userId, publicId);
     if (!owned) return;
     if (patch.version !== owned.version) {
-      throw new ConflictError(
+      throw conflict(
         "This trip changed elsewhere. Reload and restore the latest saved trip before editing.",
       );
     }

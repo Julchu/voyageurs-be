@@ -1,5 +1,3 @@
-import type { Request } from "express";
-
 export const Color = {
   LIGHT: "light",
   DARK: "dark",
@@ -21,19 +19,6 @@ export type UserPreferences = {
   lastLocation?: Coordinates;
 };
 
-export type PlaceSearch = {
-  publicId: string;
-  createdAt: string | null;
-  updatedAt: string | null;
-  query: string;
-  name: string;
-  streetAddress: string;
-  areaAddress: string;
-  category: string;
-  coordinates: Coordinates;
-  searchedAt: string;
-};
-
 export type PlaceSearchInput = {
   query: string;
   name: string;
@@ -43,7 +28,14 @@ export type PlaceSearchInput = {
   coordinates: Coordinates;
 };
 
-export interface User {
+export type PlaceSearch = PlaceSearchInput & {
+  publicId: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+  searchedAt: string;
+};
+
+export type User = {
   publicId: string;
   createdAt: string | null;
   updatedAt: string | null;
@@ -52,13 +44,4 @@ export interface User {
   name: string;
   preferences?: UserPreferences;
   lastLocation?: Coordinates;
-}
-
-export type AuthRequest<
-  TParams = Record<string, unknown>,
-  TResBody = unknown,
-  TReqBody = unknown,
-  TQuery = Record<string, unknown>,
-> = Request<TParams, TResBody, TReqBody, TQuery> & {
-  userId?: number;
 };

@@ -1,87 +1,49 @@
 import { Router } from "express";
-import type { InsertPublicUser } from "../../db/schemas/user.schema.ts";
-import {
-  bearerToken,
-  clearAuthCookies,
-  loginWithGoogleCode,
-  logoutSession,
-  refreshSession,
-  setAuthCookies,
-  userSetter,
-} from "../../lib/auth/auth-handlers.ts";
-import type { AuthRequest } from "../../types";
-import { getUserById, updateUser } from "./user.service.ts";
+import { clearAuthCookies, setAuthCookies } from "../../lib/auth/cookies.ts";
+import { bearerToken } from "../../lib/auth/tokens.ts";
+import { notFound, unauthorized } from "../../lib/errors.ts";
+import { parse } from "../../lib/validation.ts";
+import { requireUser } from "../../middleware/require-user.ts";
+import { loginWithGoogle, logout, refreshSession } from "./auth.service.ts";
 import { toUserDto } from "./user.mapper.ts";
+import { getUserById, updateUser } from "./user.queries.ts";
+import { googleLoginSchema, updateUserSchema } from "./user.validation.ts";
 
 export const userRouter: Router = Router();
 
-userRouter.get("/", userSetter, async (req: AuthRequest, res) => {
-  if (!req.userId) {
-    res.status(401).json({ success: false, error: "Invalid user ID" });
-    return;
-  }
-
+userRouter.get("/", requireUser, async (req, res) => {
   const user = await getUserById(req.userId);
   res.json({ success: true, data: user ? toUserDto(user) : null });
 });
 
-userRouter.patch(
-  "/update",
-  userSetter,
-  async (req: AuthRequest<unknown, unknown, { user: InsertPublicUser }>, res) => {
-    if (!req.userId) {
-      res.status(401).json({ success: false, error: "Invalid user ID" });
-      return;
-    }
-
-    const updatedUser = await updateUser(req.userId, req.body.user);
-    res.status(200).json({
-      success: true,
-      data: updatedUser.map(toUserDto),
-    });
-  },
-);
+userRouter.patch("/", requireUser, async (req, res) => {
+  const user = await updateUser(req.userId, parse(updateUserSchema, req.body ?? {}));
+  if (!user) throw notFound("User not found");
+  res.json({ success: true, data: toUserDto(user) });
+});
 
 userRouter.post("/login/google", async (req, res) => {
-  const code = req.body?.code;
-  const codeVerifier = req.body?.codeVerifier;
+  const { code, codeVerifier } = parse(googleLoginSchema, req.body ?? {});
+  const tokens = await loginWithGoogle(code, codeVerifier);
+  if (!tokens) throw unauthorized();
 
-  if (typeof code !== "string" || typeof codeVerifier !== "string") {
-    res.status(400).json({ success: false, error: "Missing authorization code" });
-    return;
-  }
-
-  const tokens = await loginWithGoogleCode(code, codeVerifier);
-
-  if (!tokens?.refreshToken) {
-    res.status(401).json({ success: false, error: "Unauthorized" });
-    return;
-  }
-
-  setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-  res.status(200).json({ success: true });
+  setAuthCookies(res, tokens);
+  res.json({ success: true });
 });
 
 userRouter.post("/refresh", async (req, res) => {
-  const token = bearerToken(req.header("Authorization"));
-
-  const refreshed = await refreshSession(token);
-
-  if (!refreshed) {
+  const accessToken = await refreshSession(bearerToken(req.header("Authorization")));
+  if (!accessToken) {
     clearAuthCookies(res);
-    res.status(401).json({ success: false, error: "Unauthorized" });
-    return;
+    throw unauthorized();
   }
 
-  setAuthCookies(res, refreshed.accessToken);
-  res.status(200).json({ success: true });
+  setAuthCookies(res, { accessToken });
+  res.json({ success: true });
 });
 
 userRouter.post("/logout", async (req, res) => {
-  const accessToken = bearerToken(req.header("Authorization"));
-  const refreshToken = req.header("x-refresh-token")?.trim();
-
   clearAuthCookies(res);
-  await logoutSession(accessToken, refreshToken);
-  res.status(200).json({ success: true, data: null });
+  await logout(bearerToken(req.header("Authorization")), req.header("x-refresh-token")?.trim());
+  res.json({ success: true, data: null });
 });

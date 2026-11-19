@@ -1,32 +1,15 @@
 import { Router } from "express";
-import type { AuthRequest } from "../../types";
-import { logSearch, listSearches } from "./search.service.ts";
+import { parse } from "../../lib/validation.ts";
+import { listSearches, logSearch } from "./search.service.ts";
 import { searchBodySchema } from "./search.validation.ts";
 
 export const searchRouter: Router = Router();
 
-searchRouter.get("/", async (req: AuthRequest, res) => {
-  if (!req.userId) {
-    res.status(401).json({ success: false, error: "Invalid user ID" });
-    return;
-  }
-
-  const searches = await listSearches(req.userId);
-  res.json({ success: true, data: searches });
+searchRouter.get("/", async (req, res) => {
+  res.json({ success: true, data: await listSearches(req.userId) });
 });
 
-searchRouter.post("/", async (req: AuthRequest, res) => {
-  if (!req.userId) {
-    res.status(401).json({ success: false, error: "Invalid user ID" });
-    return;
-  }
-
-  const parsed = searchBodySchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ success: false, error: "Invalid search" });
-    return;
-  }
-
-  const search = await logSearch(req.userId, parsed.data);
+searchRouter.post("/", async (req, res) => {
+  const search = await logSearch(req.userId, parse(searchBodySchema, req.body ?? {}));
   res.status(201).json({ success: true, data: search });
 });

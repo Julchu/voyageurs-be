@@ -1,60 +1,25 @@
 import { Router } from "express";
-import type { AuthRequest } from "../../types";
+import { notFound } from "../../lib/errors.ts";
+import { isPublicId, parse } from "../../lib/validation.ts";
 import { createTrip, listTrips, updateTrip } from "./trip.service.ts";
-import { createTripBodySchema, publicIdFrom, updateTripBodySchema } from "./trip.validation.ts";
+import { createTripBodySchema, updateTripBodySchema } from "./trip.validation.ts";
 
 export const tripRouter: Router = Router();
 
-tripRouter.get("/", async (req: AuthRequest, res) => {
-  if (!req.userId) {
-    res.status(401).json({ success: false, error: "Invalid user ID" });
-    return;
-  }
-
-  const trips = await listTrips(req.userId);
-  res.json({ success: true, data: trips });
+tripRouter.get("/", async (req, res) => {
+  res.json({ success: true, data: await listTrips(req.userId) });
 });
 
-tripRouter.post("/", async (req: AuthRequest, res) => {
-  if (!req.userId) {
-    res.status(401).json({ success: false, error: "Invalid user ID" });
-    return;
-  }
-
-  const parsed = createTripBodySchema.safeParse(req.body ?? {});
-  if (!parsed.success) {
-    res.status(400).json({ success: false, error: "Invalid trip" });
-    return;
-  }
-
-  const saved = await createTrip(req.userId, parsed.data);
-  res.status(201).json({ success: true, data: saved });
+tripRouter.post("/", async (req, res) => {
+  const trip = await createTrip(req.userId, parse(createTripBodySchema, req.body ?? {}));
+  res.status(201).json({ success: true, data: trip });
 });
 
-tripRouter.patch("/:publicId", async (req: AuthRequest<{ publicId: string }>, res) => {
-  if (!req.userId) {
-    res.status(401).json({ success: false, error: "Invalid user ID" });
-    return;
-  }
+tripRouter.patch("/:publicId", async (req, res) => {
+  const { publicId } = req.params;
+  if (!isPublicId(publicId)) throw notFound("Trip not found");
 
-  const publicId = publicIdFrom(req.params.publicId);
-  if (!publicId) {
-    res.status(404).json({ success: false, error: "Trip not found" });
-    return;
-  }
-
-  const parsed = updateTripBodySchema.safeParse(req.body);
-  if (!parsed.success) {
-    res
-      .status(400)
-      .json({ success: false, error: parsed.error.issues[0]?.message ?? "Invalid trip" });
-    return;
-  }
-
-  const saved = await updateTrip(req.userId, publicId, parsed.data);
-  if (!saved) {
-    res.status(404).json({ success: false, error: "Trip not found" });
-    return;
-  }
-  res.json({ success: true, data: saved });
+  const trip = await updateTrip(req.userId, publicId, parse(updateTripBodySchema, req.body ?? {}));
+  if (!trip) throw notFound("Trip not found");
+  res.json({ success: true, data: trip });
 });

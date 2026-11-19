@@ -1,25 +1,15 @@
 import type { ErrorRequestHandler } from "express";
-import createError from "http-errors";
-import { ConflictError, ValidationError } from "../lib/errors.ts";
 
-export const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, next) => {
-  if (res.headersSent) {
-    next(error);
+export const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
+  if (res.headersSent) return next(error);
+
+  // HttpErrors and body-parser errors (bad JSON, body too large) carry a 4xx status and a safe message.
+  const status = Number(error?.status);
+  if (status >= 400 && status < 500) {
+    res.status(status).json({ success: false, error: error.message });
     return;
   }
 
-  const httpError =
-    error instanceof ValidationError
-      ? createError(400, error.message)
-      : error instanceof ConflictError
-        ? createError(409, error.message)
-        : createError(error instanceof Error ? error : new Error("Unknown error"));
-  const status = httpError.status;
-
-  if (status >= 500) console.error("Request failed", error);
-
-  res.status(status).json({
-    success: false,
-    error: status >= 500 ? "Internal Server Error" : httpError.message,
-  });
+  console.error("Request failed", error);
+  res.status(500).json({ success: false, error: "Internal Server Error" });
 };
