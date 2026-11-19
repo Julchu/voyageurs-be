@@ -16,6 +16,9 @@ Each page saves on its own, so a PATCH `/trips/:publicId` holds one scope:
 ```ts
 // Drawer: the name and/or the full stop list (array order sets positions)
 { version, name?, stops? }
+
+// Stop details: changed places only. `publicId` is the place ID.
+{ version, placeDetails: [{ publicId, category, type, details, notes, url, reservations, price }] }
 ```
 
 Stops without a `publicId` are added (reusing the trip's place with the same key); saved stops missing from the list are removed.

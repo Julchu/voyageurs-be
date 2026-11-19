@@ -15,6 +15,12 @@ const toPlaceDto = (place: SelectTripPlace): TripPlaceDto => ({
   ...placeFields(place),
   publicId: place.publicId,
   key: place.placeKey,
+  type: place.type,
+  details: place.details,
+  notes: place.notes,
+  url: place.url,
+  reservations: place.reservations,
+  price: place.price,
   createdAt: place.createdAt.toISOString(),
   updatedAt: place.updatedAt.toISOString(),
 });
