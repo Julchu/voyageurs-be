@@ -1,43 +1,42 @@
-// Public API contract. Keep database and frontend-only fields out of these types.
-export type TripStopInput = {
-  publicId?: string;
-  mapboxId?: string;
-  name: string;
-  streetAddress?: string;
-  areaAddress?: string;
-  category?: string;
-  coordinates: { lat: number; lng: number };
-};
+import type { Coordinates } from "../../types";
 
-export type CreateTripInput = {
-  name?: string;
-  stops?: TripStopInput[];
-};
+// Public API contract. Keep database-only fields out.
 
-export type UpdateTripInput = CreateTripInput & {
-  version: number;
-};
+type Timestamps = { createdAt: string; updatedAt: string };
 
-export type TripStopDto = {
-  publicId: string;
-  createdAt: string | null;
-  updatedAt: string | null;
+type PlaceFields = {
   mapboxId?: string;
   name: string;
   streetAddress: string;
   areaAddress: string;
   category: string;
-  coordinates: { lat: number; lng: number };
-  position: number;
-  visited: boolean;
-  visitedAt: string | null;
+  coordinates: Coordinates;
 };
 
-export type TripDto = {
+/** A destination, once per trip; its stops share its details. `key` is the Mapbox ID or "lat,lng". */
+export type TripPlaceDto = PlaceFields &
+  Timestamps & {
+    publicId: string;
+    key: string;
+  };
+
+/** One row in the trip list, with its place's fields copied in. */
+export type TripStopDto = PlaceFields &
+  Timestamps & {
+    publicId: string;
+    placeId: string;
+    position: number;
+    visited: boolean;
+    visitedAt: string | null;
+  };
+
+export type TripDto = Timestamps & {
   publicId: string;
-  createdAt: string | null;
-  updatedAt: string | null;
   version: number;
   name: string;
+  /** Places with at least one stop, in trip order. */
+  places: TripPlaceDto[];
   stops: TripStopDto[];
+  /** Saved IDs for the client IDs of stops this request created. */
+  stopIdMap?: Record<string, string>;
 };

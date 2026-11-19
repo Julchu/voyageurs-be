@@ -30,15 +30,15 @@ export type PlaceSearchInput = {
 
 export type PlaceSearch = PlaceSearchInput & {
   publicId: string;
-  createdAt: string | null;
-  updatedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
   searchedAt: string;
 };
 
 export type User = {
   publicId: string;
-  createdAt: string | null;
-  updatedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
   email: string;
   image?: string | null;
   name: string;

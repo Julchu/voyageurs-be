@@ -4,15 +4,15 @@ import type { PlaceSearch, PlaceSearchInput } from "../../types";
 
 const toSearch = (row: SelectPlaceSearch): PlaceSearch => ({
   publicId: row.publicId,
-  createdAt: row.createdAt?.toISOString() ?? null,
-  updatedAt: row.updatedAt?.toISOString() ?? null,
+  createdAt: row.createdAt.toISOString(),
+  updatedAt: row.updatedAt.toISOString(),
   query: row.query,
   name: row.name,
   streetAddress: row.streetAddress,
   areaAddress: row.areaAddress,
   category: row.category,
   coordinates: { lat: row.latitude, lng: row.longitude },
-  searchedAt: (row.createdAt ?? new Date()).toISOString(),
+  searchedAt: row.createdAt.toISOString(),
 });
 
 export const listSearches = async (userId: number) => {

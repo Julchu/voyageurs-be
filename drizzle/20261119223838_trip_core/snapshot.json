@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "b5e7e0ff-2de8-43d4-9324-4c5ad6325c6c",
+  "id": "37cb0565-4d78-4ae7-919e-b4ca4541c13b",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -15,6 +15,12 @@
     {
       "isRlsEnabled": false,
       "name": "refresh_tokens",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "trip_places",
       "entityType": "tables",
       "schema": "public"
     },
@@ -176,22 +182,9 @@
       "table": "place_searches"
     },
     {
-      "type": "timestamp",
+      "type": "timestamp with time zone",
       "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "updated_at",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "place_searches"
-    },
-    {
-      "type": "timestamp",
-      "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": "now()",
       "generated": null,
@@ -202,7 +195,20 @@
       "table": "place_searches"
     },
     {
-      "type": "timestamp",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "place_searches"
+    },
+    {
+      "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
@@ -263,7 +269,7 @@
       "table": "refresh_tokens"
     },
     {
-      "type": "timestamp",
+      "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -276,7 +282,7 @@
       "table": "refresh_tokens"
     },
     {
-      "type": "timestamp",
+      "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
@@ -287,6 +293,197 @@
       "entityType": "columns",
       "schema": "public",
       "table": "refresh_tokens"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "always",
+        "name": "trip_places_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "gen_random_uuid()",
+      "generated": null,
+      "identity": null,
+      "name": "public_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "trip_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "varchar(1024)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "place_key",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "varchar(1024)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "mapbox_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "varchar(500)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "street_address",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "varchar(500)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "area_address",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "category",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "double precision",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "latitude",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "double precision",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "longitude",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "deleted_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
     },
     {
       "type": "integer",
@@ -337,92 +534,14 @@
       "table": "trip_stops"
     },
     {
-      "type": "varchar(1024)",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "mapbox_id",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "trip_stops"
-    },
-    {
-      "type": "varchar(255)",
+      "type": "integer",
       "typeSchema": null,
       "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "name",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "trip_stops"
-    },
-    {
-      "type": "varchar(500)",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "''",
-      "generated": null,
-      "identity": null,
-      "name": "street_address",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "trip_stops"
-    },
-    {
-      "type": "varchar(500)",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "''",
-      "generated": null,
-      "identity": null,
-      "name": "area_address",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "trip_stops"
-    },
-    {
-      "type": "varchar(255)",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "''",
-      "generated": null,
-      "identity": null,
-      "name": "category",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "trip_stops"
-    },
-    {
-      "type": "double precision",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "latitude",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "trip_stops"
-    },
-    {
-      "type": "double precision",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "longitude",
+      "name": "place_id",
       "entityType": "columns",
       "schema": "public",
       "table": "trip_stops"
@@ -454,7 +573,7 @@
       "table": "trip_stops"
     },
     {
-      "type": "timestamp",
+      "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
@@ -467,22 +586,9 @@
       "table": "trip_stops"
     },
     {
-      "type": "timestamp",
+      "type": "timestamp with time zone",
       "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "updated_at",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "trip_stops"
-    },
-    {
-      "type": "timestamp",
-      "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": "now()",
       "generated": null,
@@ -493,7 +599,20 @@
       "table": "trip_stops"
     },
     {
-      "type": "timestamp",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_stops"
+    },
+    {
+      "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
@@ -580,22 +699,9 @@
       "table": "trips"
     },
     {
-      "type": "timestamp",
+      "type": "timestamp with time zone",
       "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "updated_at",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "trips"
-    },
-    {
-      "type": "timestamp",
-      "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": "now()",
       "generated": null,
@@ -606,7 +712,20 @@
       "table": "trips"
     },
     {
-      "type": "timestamp",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trips"
+    },
+    {
+      "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
@@ -680,7 +799,7 @@
       "table": "users"
     },
     {
-      "type": "varchar(255)",
+      "type": "varchar(2048)",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
@@ -706,22 +825,9 @@
       "table": "users"
     },
     {
-      "type": "timestamp",
+      "type": "timestamp with time zone",
       "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "updated_at",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "users"
-    },
-    {
-      "type": "timestamp",
-      "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": "now()",
       "generated": null,
@@ -732,7 +838,20 @@
       "table": "users"
     },
     {
-      "type": "timestamp",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "timestamp with time zone",
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
@@ -743,27 +862,6 @@
       "entityType": "columns",
       "schema": "public",
       "table": "users"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
-          "value": "public_id",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "place_searches_public_id_unique",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "place_searches"
     },
     {
       "nameExplicit": true,
@@ -797,27 +895,6 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "jti",
-          "isExpression": false,
-          "asc": true,
-          "nullsFirst": false,
-          "opclass": null
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "with": "",
-      "method": "btree",
-      "concurrently": false,
-      "name": "refresh_tokens_jti_unique",
-      "entityType": "indexes",
-      "schema": "public",
-      "table": "refresh_tokens"
-    },
-    {
-      "nameExplicit": true,
-      "columns": [
-        {
           "value": "user_id",
           "isExpression": false,
           "asc": true,
@@ -839,7 +916,14 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "public_id",
+          "value": "trip_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "place_key",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
@@ -851,10 +935,10 @@
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "trip_stops_public_id_unique",
+      "name": "trip_places_trip_key_unique",
       "entityType": "indexes",
       "schema": "public",
-      "table": "trip_stops"
+      "table": "trip_places"
     },
     {
       "nameExplicit": true,
@@ -888,22 +972,22 @@
       "nameExplicit": true,
       "columns": [
         {
-          "value": "public_id",
+          "value": "place_id",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
           "opclass": null
         }
       ],
-      "isUnique": true,
+      "isUnique": false,
       "where": null,
       "with": "",
       "method": "btree",
       "concurrently": false,
-      "name": "trips_public_id_unique",
+      "name": "trip_stops_place_id_idx",
       "entityType": "indexes",
       "schema": "public",
-      "table": "trips"
+      "table": "trip_stops"
     },
     {
       "nameExplicit": true,
@@ -972,7 +1056,41 @@
       ],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
+      "name": "trip_places_trip_id_trips_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "trip_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "trips",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "trip_stops_trip_id_trips_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "trip_stops"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "place_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "trip_places",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "trip_stops_place_id_trip_places_id_fkey",
       "entityType": "fks",
       "schema": "public",
       "table": "trip_stops"
@@ -1019,6 +1137,16 @@
         "id"
       ],
       "nameExplicit": false,
+      "name": "trip_places_pkey",
+      "schema": "public",
+      "table": "trip_places",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
       "name": "trip_stops_pkey",
       "schema": "public",
       "table": "trip_stops",
@@ -1045,54 +1173,109 @@
       "entityType": "pks"
     },
     {
-      "nameExplicit": true,
+      "nameExplicit": false,
       "columns": [
         "public_id"
       ],
       "nullsNotDistinct": false,
-      "name": "unique_user",
-      "entityType": "uniques",
+      "name": "place_searches_public_id_key",
       "schema": "public",
-      "table": "users"
+      "table": "place_searches",
+      "entityType": "uniques"
     },
     {
-      "nameExplicit": true,
+      "nameExplicit": false,
+      "columns": [
+        "jti"
+      ],
+      "nullsNotDistinct": false,
+      "name": "refresh_tokens_jti_key",
+      "schema": "public",
+      "table": "refresh_tokens",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "public_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "trip_places_public_id_key",
+      "schema": "public",
+      "table": "trip_places",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "public_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "trip_stops_public_id_key",
+      "schema": "public",
+      "table": "trip_stops",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "public_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "trips_public_id_key",
+      "schema": "public",
+      "table": "trips",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "public_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "users_public_id_key",
+      "schema": "public",
+      "table": "users",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
       "columns": [
         "email"
       ],
       "nullsNotDistinct": false,
-      "name": "unique_user_email",
-      "entityType": "uniques",
+      "name": "users_email_key",
       "schema": "public",
-      "table": "users"
+      "table": "users",
+      "entityType": "uniques"
     },
     {
-      "value": "\"latitude\" >= -90 AND \"latitude\" <= 90",
+      "value": "\"latitude\" BETWEEN -90 AND 90",
       "name": "place_searches_latitude_check",
       "entityType": "checks",
       "schema": "public",
       "table": "place_searches"
     },
     {
-      "value": "\"longitude\" >= -180 AND \"longitude\" <= 180",
+      "value": "\"longitude\" BETWEEN -180 AND 180",
       "name": "place_searches_longitude_check",
       "entityType": "checks",
       "schema": "public",
       "table": "place_searches"
     },
     {
-      "value": "\"latitude\" >= -90 AND \"latitude\" <= 90",
-      "name": "trip_stops_latitude_check",
+      "value": "\"latitude\" BETWEEN -90 AND 90",
+      "name": "trip_places_latitude_check",
       "entityType": "checks",
       "schema": "public",
-      "table": "trip_stops"
+      "table": "trip_places"
     },
     {
-      "value": "\"longitude\" >= -180 AND \"longitude\" <= 180",
-      "name": "trip_stops_longitude_check",
+      "value": "\"longitude\" BETWEEN -180 AND 180",
+      "name": "trip_places_longitude_check",
       "entityType": "checks",
       "schema": "public",
-      "table": "trip_stops"
+      "table": "trip_places"
     }
   ],
   "renames": []

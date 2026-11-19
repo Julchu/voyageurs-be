@@ -3,8 +3,8 @@ import type { User } from "../../types";
 
 export const toUserDto = (user: SelectUser): User => ({
   publicId: user.publicId,
-  createdAt: user.createdAt?.toISOString() ?? null,
-  updatedAt: user.updatedAt?.toISOString() ?? null,
+  createdAt: user.createdAt.toISOString(),
+  updatedAt: user.updatedAt.toISOString(),
   name: user.name,
   email: user.email,
   image: user.image,
