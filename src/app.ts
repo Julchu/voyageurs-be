@@ -1,5 +1,5 @@
 import cookieParser from "cookie-parser";
-import express, { type Express, type NextFunction, type Request, type Response } from "express";
+import express, { type Express } from "express";
 import rateLimit from "express-rate-limit";
 import createError from "http-errors";
 import logger from "morgan";
@@ -20,25 +20,18 @@ if (trustProxy === "true") {
 }
 
 app.use(logger("dev"));
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-const limiter = rateLimit({
+const rateLimitOptions = {
   windowMs: 15 * 60 * 1000,
-  limit: 1000,
-  standardHeaders: "draft-7",
+  standardHeaders: "draft-7" as const,
   legacyHeaders: false,
   message: { success: false, error: "Too many requests, please try again later." },
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 30,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  message: { success: false, error: "Too many requests, please try again later." },
-});
+};
+const limiter = rateLimit({ ...rateLimitOptions, limit: 1000 });
+const authLimiter = rateLimit({ ...rateLimitOptions, limit: 30 });
 
 app.use("/user/login", authLimiter);
 app.use("/user/refresh", authLimiter);
@@ -58,7 +51,7 @@ protectedRoutes.use("/trips", tripRouter);
 protectedRoutes.use("/searches", searchRouter);
 app.use("/", protectedRoutes);
 
-app.use((_req: Request, _res: Response, next: NextFunction) => {
+app.use((_req, _res, next) => {
   next(createError(404));
 });
 

@@ -1,11 +1,11 @@
-import { type Response, type Router, Router as createRouter } from "express";
+import { Router } from "express";
 import type { AuthRequest } from "../../types";
 import { createTrip, listTrips, updateTrip } from "./trip.service.ts";
 import { createTripBodySchema, publicIdFrom, updateTripBodySchema } from "./trip.validation.ts";
 
-export const tripRouter: Router = createRouter();
+export const tripRouter: Router = Router();
 
-tripRouter.get("/", async (req: AuthRequest, res: Response) => {
+tripRouter.get("/", async (req: AuthRequest, res) => {
   if (!req.userId) {
     res.status(401).json({ success: false, error: "Invalid user ID" });
     return;
@@ -15,7 +15,7 @@ tripRouter.get("/", async (req: AuthRequest, res: Response) => {
   res.json({ success: true, data: trips });
 });
 
-tripRouter.post("/", async (req: AuthRequest, res: Response) => {
+tripRouter.post("/", async (req: AuthRequest, res) => {
   if (!req.userId) {
     res.status(401).json({ success: false, error: "Invalid user ID" });
     return;
@@ -31,7 +31,7 @@ tripRouter.post("/", async (req: AuthRequest, res: Response) => {
   res.status(201).json({ success: true, data: saved });
 });
 
-tripRouter.patch("/:publicId", async (req: AuthRequest<{ publicId: string }>, res: Response) => {
+tripRouter.patch("/:publicId", async (req: AuthRequest<{ publicId: string }>, res) => {
   if (!req.userId) {
     res.status(401).json({ success: false, error: "Invalid user ID" });
     return;
@@ -45,7 +45,9 @@ tripRouter.patch("/:publicId", async (req: AuthRequest<{ publicId: string }>, re
 
   const parsed = updateTripBodySchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ success: false, error: "Invalid trip" });
+    res
+      .status(400)
+      .json({ success: false, error: parsed.error.issues[0]?.message ?? "Invalid trip" });
     return;
   }
 

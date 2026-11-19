@@ -1,11 +1,11 @@
-import { type Response, type Router, Router as createRouter } from "express";
+import { Router } from "express";
 import type { AuthRequest } from "../../types";
 import { logSearch, listSearches } from "./search.service.ts";
 import { searchBodySchema } from "./search.validation.ts";
 
-export const searchRouter: Router = createRouter();
+export const searchRouter: Router = Router();
 
-searchRouter.get("/", async (req: AuthRequest, res: Response) => {
+searchRouter.get("/", async (req: AuthRequest, res) => {
   if (!req.userId) {
     res.status(401).json({ success: false, error: "Invalid user ID" });
     return;
@@ -15,7 +15,7 @@ searchRouter.get("/", async (req: AuthRequest, res: Response) => {
   res.json({ success: true, data: searches });
 });
 
-searchRouter.post("/", async (req: AuthRequest, res: Response) => {
+searchRouter.post("/", async (req: AuthRequest, res) => {
   if (!req.userId) {
     res.status(401).json({ success: false, error: "Invalid user ID" });
     return;

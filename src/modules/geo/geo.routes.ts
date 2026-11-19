@@ -1,8 +1,8 @@
-import { type Router, Router as createRouter } from "express";
+import { Router } from "express";
 import { clientIp, isPublicIp, normalizeIp } from "../../utils/client-ip.ts";
 import { fetchGeo } from "../../utils/geo.ts";
 
-export const geoRouter: Router = createRouter();
+export const geoRouter: Router = Router();
 
 geoRouter.post("/", async (req, res) => {
   const fromRequest = clientIp(req);

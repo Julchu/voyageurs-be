@@ -1,4 +1,4 @@
-import { type Response, type Router, Router as createRouter } from "express";
+import { Router } from "express";
 import type { InsertPublicUser } from "../../db/schemas/user.schema.ts";
 import {
   bearerToken,
@@ -13,7 +13,7 @@ import type { AuthRequest } from "../../types";
 import { getUserById, updateUser } from "./user.service.ts";
 import { toUserDto } from "./user.mapper.ts";
 
-export const userRouter: Router = createRouter();
+export const userRouter: Router = Router();
 
 userRouter.get("/", userSetter, async (req: AuthRequest, res) => {
   if (!req.userId) {
@@ -28,7 +28,7 @@ userRouter.get("/", userSetter, async (req: AuthRequest, res) => {
 userRouter.patch(
   "/update",
   userSetter,
-  async (req: AuthRequest<unknown, unknown, { user: InsertPublicUser }>, res: Response) => {
+  async (req: AuthRequest<unknown, unknown, { user: InsertPublicUser }>, res) => {
     if (!req.userId) {
       res.status(401).json({ success: false, error: "Invalid user ID" });
       return;
@@ -37,7 +37,7 @@ userRouter.patch(
     const updatedUser = await updateUser(req.userId, req.body.user);
     res.status(200).json({
       success: true,
-      data: updatedUser?.map(toUserDto) ?? [],
+      data: updatedUser.map(toUserDto),
     });
   },
 );
