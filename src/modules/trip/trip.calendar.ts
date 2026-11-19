@@ -78,6 +78,7 @@ export const saveCalendar = async (
       { ...visit, stopId: resolve(visit.stopId) },
     ]),
   );
+  assertSchedule(calendar.startDate, calendar.endDate, [...visits.values()]);
   for (const visit of visits.values()) {
     const place = placeOf.get(visit.stopId);
     if (!place) throw badRequest("A visit's stop does not belong to this trip");
@@ -85,7 +86,6 @@ export const saveCalendar = async (
       throw badRequest("A visit falls outside its open hours. Move or remove it first.");
   }
   for (const stop of trip.stops) assertReservationKept(visitOf(stop), visits.get(stop.publicId));
-  assertSchedule(calendar.startDate, calendar.endDate, [...visits.values()]);
   assertChronological(order.map((id) => visits.get(id)));
 
   await insertStops(
