@@ -2,13 +2,17 @@ import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  date,
   doublePrecision,
   index,
   integer,
+  jsonb,
   pgTable,
+  smallint,
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
+import type { AvailabilityWindow } from "../../modules/trip/trip.types.ts";
 import { identity, timestamps, timestamptz } from "../utils/columns.ts";
 import { userTable } from "./user.schema.ts";
 
@@ -22,9 +26,17 @@ export const tripTable = pgTable(
     name: varchar({ length: 255 }).notNull(),
     // Bumped by every save, so a stale version means the trip changed elsewhere.
     version: integer().notNull().default(1),
+    startDate: date("start_date"),
+    endDate: date("end_date"),
     ...timestamps,
   },
-  (table) => [index("trips_user_id_idx").on(table.userId)],
+  (table) => [
+    index("trips_user_id_idx").on(table.userId),
+    check(
+      "trips_dates_check",
+      sql`num_nulls(${table.startDate}, ${table.endDate}) IN (0, 2) AND ${table.endDate} - ${table.startDate} BETWEEN 0 AND 365`,
+    ),
+  ],
 );
 
 /** A destination, once per trip. Every stop there shares its details. */
@@ -45,6 +57,8 @@ export const tripPlaceTable = pgTable(
 
     latitude: doublePrecision().notNull(),
     longitude: doublePrecision().notNull(),
+    // Weekly open hours; empty means open anytime.
+    availability: jsonb().$type<AvailabilityWindow[]>().notNull().default([]),
 
     ...timestamps,
   },
@@ -69,15 +83,29 @@ export const tripStopTable = pgTable(
     position: integer().notNull(),
     visited: boolean().notNull().default(false),
     visitedAt: timestamptz("visited_at"),
+    // A stop's single visit: one trip day, destination-local minutes.
+    visitDate: date("visit_date"),
+    visitStart: smallint("visit_start"),
+    visitEnd: smallint("visit_end"),
+    visitLocked: boolean("visit_locked").notNull().default(false),
     ...timestamps,
   },
   (table) => [
     index("trip_stops_trip_position_idx").on(table.tripId, table.position),
     index("trip_stops_place_id_idx").on(table.placeId),
+    check(
+      "trip_stops_visit_check",
+      sql`num_nulls(${table.visitDate}, ${table.visitStart}, ${table.visitEnd}) IN (0, 3)`,
+    ),
+    check(
+      "trip_stops_visit_time_check",
+      sql`${table.visitStart} >= 0 AND ${table.visitStart} < ${table.visitEnd} AND ${table.visitEnd} <= 1440`,
+    ),
   ],
 );
 
 export type SelectTrip = InferSelectModel<typeof tripTable>;
 export type InsertTrip = InferInsertModel<typeof tripTable>;
+export type SelectTripStop = InferSelectModel<typeof tripStopTable>;
 export type SelectTripPlace = InferSelectModel<typeof tripPlaceTable>;
 export type InsertTripPlace = InferInsertModel<typeof tripPlaceTable>;

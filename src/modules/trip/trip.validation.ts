@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { coordinatesSchema, mapboxIdSchema, publicIdSchema } from "../../lib/validation.ts";
+import { sortWindows, windowsOverlap } from "./trip.schedule.ts";
 
 export const MAX_STOPS = 1000;
 
@@ -28,6 +29,66 @@ const stopsSchema = z
     "Duplicate temporary stop IDs",
   );
 
+const minuteSchema = z.number().int().min(0).max(1440).multipleOf(30);
+
+const windowSchema = z
+  .object({
+    day: z.number().int().min(0).max(6),
+    startMinute: minuteSchema,
+    endMinute: minuteSchema,
+  })
+  .refine(
+    (window) => window.endMinute > window.startMinute,
+    "Open hours must end after they start",
+  );
+
+const visitSchema = z
+  .object({
+    stopId: publicIdSchema,
+    date: z.string().date(),
+    startMinute: minuteSchema,
+    endMinute: minuteSchema,
+    locked: z.boolean().default(false),
+  })
+  .refine((visit) => visit.endMinute > visit.startMinute, "Visits must end after they start");
+
+/** The calendar sends every visit, changed open hours (per stop) and the full order, copies included. */
+const calendarSchema = z.object({
+  startDate: z.string().date().nullable(),
+  endDate: z.string().date().nullable(),
+  visits: z
+    .array(visitSchema)
+    .max(MAX_STOPS)
+    .refine(
+      (visits) => isUnique(visits.map((visit) => visit.stopId)),
+      "Each stop can have one visit; duplicate it for another",
+    ),
+  availability: z
+    .array(
+      z.object({
+        publicId: publicIdSchema,
+        availability: z
+          .array(windowSchema)
+          .max(7 * 48)
+          .transform(sortWindows)
+          .refine((windows) => !windowsOverlap(windows), "Open hours cannot overlap"),
+      }),
+    )
+    .max(MAX_STOPS)
+    .refine((items) => isUnique(items.map((item) => item.publicId)), "Duplicate stop IDs"),
+  newStops: z
+    .array(z.object({ clientId: publicIdSchema, sourceStopId: publicIdSchema }))
+    .max(MAX_STOPS)
+    .refine(
+      (copies) => isUnique(copies.map((copy) => copy.clientId)),
+      "Duplicate temporary stop IDs",
+    )
+    .default([]),
+  order: z.array(publicIdSchema).max(MAX_STOPS),
+});
+
+export type CalendarInput = z.infer<typeof calendarSchema>;
+
 export const createTripSchema = z.object({
   name: nameSchema.default("Current trip"),
   stops: stopsSchema
@@ -45,6 +106,7 @@ export const tripPatchSchema = z
     version: z.number().int().positive().safe(),
     name: nameSchema.optional(),
     stops: stopsSchema.optional(),
+    calendar: calendarSchema.optional(),
   })
   .strict()
   .refine(({ version: _version, ...scopes }) => {
