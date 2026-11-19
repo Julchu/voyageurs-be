@@ -10,7 +10,13 @@ const nameSchema = z.string().trim().min(1).max(255);
 const stopSchema = z.object({
   publicId: publicIdSchema.optional(),
   clientId: publicIdSchema.optional(),
-  mapboxId: z.string().trim().min(1).max(1024).optional(),
+  // Blank means no Mapbox ID, like the frontend's placeKey.
+  mapboxId: z
+    .string()
+    .trim()
+    .max(1024)
+    .optional()
+    .transform((id) => id || undefined),
   name: nameSchema,
   streetAddress: z.string().trim().max(500).default(""),
   areaAddress: z.string().trim().max(500).default(""),
