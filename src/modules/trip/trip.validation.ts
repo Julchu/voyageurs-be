@@ -50,7 +50,8 @@ const placeDetailsSchema = z
       notes: z.string().max(20_000),
       url: z.string().trim().max(2048).refine(isWebUrl, "Use an http or https URL"),
       reservations: z.enum(RESERVATIONS).nullable(),
-      price: z.number().min(0).max(9_999_999_999.99).multipleOf(0.01).nullable(),
+      // numeric(12,2) rounds to cents, so 12.345 saves as 12.35.
+      price: z.number().min(0).max(9_999_999_999.99).nullable(),
     }) satisfies z.ZodType<StopDetails & { publicId: string }>,
   )
   .max(MAX_STOPS)
