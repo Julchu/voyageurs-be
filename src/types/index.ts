@@ -1,3 +1,5 @@
+import type { Request } from "express";
+
 export const Color = {
   LIGHT: "light",
   DARK: "dark",
@@ -46,3 +48,6 @@ export type User = {
   preferences?: UserPreferences;
   lastLocation?: Coordinates;
 };
+
+/** A request that passed requireUser. */
+export type AuthRequest<Params = Record<string, string>> = Request<Params> & { userId: number };

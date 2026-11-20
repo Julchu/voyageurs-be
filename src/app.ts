@@ -3,7 +3,6 @@ import rateLimit from "express-rate-limit";
 import logger from "morgan";
 import { notFound } from "./lib/errors.ts";
 import { errorHandler } from "./middleware/error-handler.ts";
-import { requireUser } from "./middleware/require-user.ts";
 import { geoRouter } from "./modules/geo/geo.routes.ts";
 import { searchRouter } from "./modules/search/search.routes.ts";
 import { tripRouter } from "./modules/trip/trip.routes.ts";
@@ -35,9 +34,9 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/user", userRouter);
-app.use("/geo", requireUser, geoRouter);
-app.use("/trips", requireUser, tripRouter);
-app.use("/searches", requireUser, searchRouter);
+app.use("/geo", geoRouter);
+app.use("/trips", tripRouter);
+app.use("/searches", searchRouter);
 
 app.use(() => {
   throw notFound();

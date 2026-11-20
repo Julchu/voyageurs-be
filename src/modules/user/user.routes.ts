@@ -11,16 +11,22 @@ import { googleLoginSchema, updateUserSchema } from "./user.validation.ts";
 
 export const userRouter: Router = Router();
 
-userRouter.get("/", requireUser, async (req, res) => {
-  const user = await getUserById(req.userId);
-  res.json({ success: true, data: user ? toUserDto(user) : null });
-});
+userRouter.get(
+  "/",
+  requireUser(async (req, res) => {
+    const user = await getUserById(req.userId);
+    res.json({ success: true, data: user ? toUserDto(user) : null });
+  }),
+);
 
-userRouter.patch("/", requireUser, async (req, res) => {
-  const user = await updateUser(req.userId, parse(updateUserSchema, req.body ?? {}));
-  if (!user) throw notFound("User not found");
-  res.json({ success: true, data: toUserDto(user) });
-});
+userRouter.patch(
+  "/",
+  requireUser(async (req, res) => {
+    const user = await updateUser(req.userId, parse(updateUserSchema, req.body ?? {}));
+    if (!user) throw notFound("User not found");
+    res.json({ success: true, data: toUserDto(user) });
+  }),
+);
 
 userRouter.post("/login/google", async (req, res) => {
   const { code, codeVerifier } = parse(googleLoginSchema, req.body ?? {});

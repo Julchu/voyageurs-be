@@ -1,15 +1,20 @@
-import type { RequestHandler } from "express";
+import type { RequestHandler, Response } from "express";
 import { bearerToken } from "../lib/auth/tokens.ts";
 import { unauthorized } from "../lib/errors.ts";
 import { authenticate } from "../modules/user/auth.service.ts";
+import type { AuthRequest } from "../types";
 
-export const requireUser: RequestHandler = async (req, _res, next) => {
-  const token = bearerToken(req.header("Authorization"));
-  if (!token) throw unauthorized("Missing access token");
+type AuthHandler<Params> = (req: AuthRequest<Params>, res: Response) => Promise<void>;
 
-  const userId = await authenticate(token);
-  if (!userId) throw unauthorized();
+/** Runs the handler only for a signed-in user, with their ID on the request. */
+export const requireUser =
+  <Params = Record<string, string>>(handler: AuthHandler<Params>): RequestHandler<Params> =>
+  async (req, res) => {
+    const token = bearerToken(req.header("Authorization"));
+    if (!token) throw unauthorized("Missing access token");
 
-  req.userId = userId;
-  next();
-};
+    const userId = await authenticate(token);
+    if (!userId) throw unauthorized();
+
+    await handler(Object.assign(req, { userId }), res);
+  };

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireUser } from "../../middleware/require-user.ts";
 import { notFound } from "../../lib/errors.ts";
 import { clientIp, publicIp } from "../../utils/client-ip.ts";
 import { fetchGeo } from "./geo.service.ts";
@@ -9,12 +10,15 @@ export const geoRouter: Router = Router();
 const devIp = (value: unknown) =>
   process.env.NODE_ENV === "development" && typeof value === "string" ? publicIp(value) : undefined;
 
-geoRouter.post("/", async (req, res) => {
-  const ip = clientIp(req) ?? devIp(req.body?.ip);
-  if (!ip) throw notFound("Client IP unavailable");
+geoRouter.post(
+  "/",
+  requireUser(async (req, res) => {
+    const ip = clientIp(req) ?? devIp(req.body?.ip);
+    if (!ip) throw notFound("Client IP unavailable");
 
-  const geo = await fetchGeo(ip);
-  if (!geo) throw notFound("Geolocation unavailable");
+    const geo = await fetchGeo(ip);
+    if (!geo) throw notFound("Geolocation unavailable");
 
-  res.json({ success: true, data: geo });
-});
+    res.json({ success: true, data: geo });
+  }),
+);
