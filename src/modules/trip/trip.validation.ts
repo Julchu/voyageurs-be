@@ -50,7 +50,7 @@ export const tripPatchSchema = z
   .refine(({ version: _version, ...scopes }) => {
     const keys = Object.entries(scopes).flatMap(([key, value]) => (value === undefined ? [] : key));
     return new Set(keys.map(scopeOf)).size <= 1;
-  }, "Save the drawer, stop details and calendar separately");
+  }, "Save one page at a time");
 
 export type StopInput = z.infer<typeof stopSchema>;
 export type CreateTripInput = z.infer<typeof createTripSchema>;
