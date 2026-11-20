@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { coordinatesSchema, publicIdSchema } from "../../lib/validation.ts";
+import { coordinatesSchema, mapboxIdSchema, publicIdSchema } from "../../lib/validation.ts";
 
 export const MAX_STOPS = 1000;
 
@@ -10,13 +10,7 @@ const nameSchema = z.string().trim().min(1).max(255);
 const stopSchema = z.object({
   publicId: publicIdSchema.optional(),
   clientId: publicIdSchema.optional(),
-  // Blank means no Mapbox ID, like the frontend's placeKey.
-  mapboxId: z
-    .string()
-    .trim()
-    .max(1024)
-    .optional()
-    .transform((id) => id || undefined),
+  mapboxId: mapboxIdSchema,
   name: nameSchema,
   streetAddress: z.string().trim().max(500).default(""),
   areaAddress: z.string().trim().max(500).default(""),

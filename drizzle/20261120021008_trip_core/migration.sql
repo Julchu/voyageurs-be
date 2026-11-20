@@ -3,6 +3,7 @@ CREATE TABLE "place_searches" (
 	"public_id" uuid DEFAULT gen_random_uuid() NOT NULL UNIQUE,
 	"user_id" integer NOT NULL,
 	"query" varchar(500) NOT NULL,
+	"mapbox_id" varchar(1024),
 	"name" varchar(255) NOT NULL,
 	"street_address" varchar(500) DEFAULT '' NOT NULL,
 	"area_address" varchar(500) DEFAULT '' NOT NULL,

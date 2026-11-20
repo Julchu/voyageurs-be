@@ -8,6 +8,14 @@ export const coordinatesSchema = z.object({
   lng: z.number().gte(-180).lte(180),
 });
 
+// Blank means no Mapbox ID, like the frontend's placeKey.
+export const mapboxIdSchema = z
+  .string()
+  .trim()
+  .max(1024)
+  .optional()
+  .transform((id) => id || undefined);
+
 export const isPublicId = (value: unknown): value is string =>
   publicIdSchema.safeParse(value).success;
 

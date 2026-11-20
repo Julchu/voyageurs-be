@@ -7,6 +7,7 @@ const toSearch = (row: SelectPlaceSearch): PlaceSearch => ({
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
   query: row.query,
+  mapboxId: row.mapboxId ?? undefined,
   name: row.name,
   streetAddress: row.streetAddress,
   areaAddress: row.areaAddress,

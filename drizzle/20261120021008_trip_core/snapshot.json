@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "37cb0565-4d78-4ae7-919e-b4ca4541c13b",
+  "id": "72f83e9a-3862-4c12-aee0-243d162f273c",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -99,6 +99,19 @@
       "generated": null,
       "identity": null,
       "name": "query",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "place_searches"
+    },
+    {
+      "type": "varchar(1024)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "mapbox_id",
       "entityType": "columns",
       "schema": "public",
       "table": "place_searches"

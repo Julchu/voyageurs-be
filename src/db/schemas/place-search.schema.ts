@@ -11,6 +11,7 @@ export const placeSearchTable = pgTable(
       .notNull()
       .references(() => userTable.id, { onDelete: "cascade" }),
     query: varchar({ length: 500 }).notNull(),
+    mapboxId: varchar("mapbox_id", { length: 1024 }),
     name: varchar({ length: 255 }).notNull(),
     streetAddress: varchar("street_address", { length: 500 }).notNull().default(""),
     areaAddress: varchar("area_address", { length: 500 }).notNull().default(""),

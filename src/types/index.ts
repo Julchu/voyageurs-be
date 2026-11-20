@@ -21,6 +21,7 @@ export type UserPreferences = {
 
 export type PlaceSearchInput = {
   query: string;
+  mapboxId?: string;
   name: string;
   streetAddress: string;
   areaAddress: string;
