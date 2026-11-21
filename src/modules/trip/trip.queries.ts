@@ -3,11 +3,13 @@ import { db } from "../../db";
 import {
   type InsertTrip,
   type InsertTripPlace,
+  type SelectTripStop,
   tripPlaceTable,
   tripStopTable,
   tripTable,
 } from "../../db/schemas/trip.schema.ts";
 import { recordset, single } from "../../db/utils/sql.ts";
+import type { AvailabilityWindow } from "./trip.types.ts";
 
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -129,4 +131,39 @@ export const removeStops = async (tx: Tx, tripId: number, publicIds: string[]) =
     .update(tripStopTable)
     .set({ deletedAt: new Date() })
     .where(and(eq(tripStopTable.tripId, tripId), inArray(tripStopTable.publicId, publicIds)));
+};
+
+export type StopPlan = Pick<
+  SelectTripStop,
+  "publicId" | "position" | "slotDate" | "slotStart" | "slotEnd" | "slotLocked"
+>;
+
+/** Saves list positions and slots together, in one statement. */
+export const saveStopPlans = async (tx: Tx, tripId: number, stops: StopPlan[]) => {
+  if (!stops.length) return;
+  await tx.execute(sql`
+    UPDATE ${tripStopTable} SET
+      position = changes.position, slot_date = changes."slotDate",
+      slot_start = changes."slotStart", slot_end = changes."slotEnd",
+      slot_locked = changes."slotLocked", updated_at = now()
+    FROM ${recordset(
+      stops,
+      sql`"publicId" uuid, position integer, "slotDate" date, "slotStart" smallint,
+        "slotEnd" smallint, "slotLocked" boolean`,
+    )}
+    WHERE ${tripStopTable.tripId} = ${tripId} AND ${tripStopTable.publicId} = changes."publicId"
+  `);
+};
+
+export const savePlaceHours = async (
+  tx: Tx,
+  tripId: number,
+  places: { id: number; availability: AvailabilityWindow[] }[],
+) => {
+  if (!places.length) return;
+  await tx.execute(sql`
+    UPDATE ${tripPlaceTable} SET availability = changes.availability, updated_at = now()
+    FROM ${recordset(places, sql`id integer, availability jsonb`)}
+    WHERE ${tripPlaceTable.tripId} = ${tripId} AND ${tripPlaceTable.id} = changes.id
+  `);
 };
