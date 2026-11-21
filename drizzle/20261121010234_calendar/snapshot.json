@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "dabe82d9-14cd-4a06-90cd-68751824bd76",
+  "id": "f6259b93-57aa-40cc-81f6-831e586313b9",
   "prevIds": [
     "72f83e9a-3862-4c12-aee0-243d162f273c"
   ],
@@ -619,7 +619,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "visit_date",
+      "name": "slot_date",
       "entityType": "columns",
       "schema": "public",
       "table": "trip_stops"
@@ -632,7 +632,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "visit_start",
+      "name": "slot_start",
       "entityType": "columns",
       "schema": "public",
       "table": "trip_stops"
@@ -645,7 +645,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "visit_end",
+      "name": "slot_end",
       "entityType": "columns",
       "schema": "public",
       "table": "trip_stops"
@@ -658,7 +658,7 @@
       "default": "false",
       "generated": null,
       "identity": null,
-      "name": "visit_locked",
+      "name": "slot_locked",
       "entityType": "columns",
       "schema": "public",
       "table": "trip_stops"
@@ -1382,15 +1382,15 @@
       "table": "trip_places"
     },
     {
-      "value": "num_nulls(\"visit_date\", \"visit_start\", \"visit_end\") IN (0, 3)",
-      "name": "trip_stops_visit_check",
+      "value": "num_nulls(\"slot_date\", \"slot_start\", \"slot_end\") IN (0, 3)",
+      "name": "trip_stops_slot_check",
       "entityType": "checks",
       "schema": "public",
       "table": "trip_stops"
     },
     {
-      "value": "\"visit_start\" >= 0 AND \"visit_start\" < \"visit_end\" AND \"visit_end\" <= 1440",
-      "name": "trip_stops_visit_time_check",
+      "value": "\"slot_start\" >= 0 AND \"slot_start\" < \"slot_end\" AND \"slot_end\" <= 1440",
+      "name": "trip_stops_slot_time_check",
       "entityType": "checks",
       "schema": "public",
       "table": "trip_stops"
