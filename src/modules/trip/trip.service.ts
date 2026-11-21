@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db } from "../../db";
 import { badRequest, conflict, notFound } from "../../lib/errors.ts";
+import { saveCalendar } from "./trip.calendar.ts";
 import { savePlaceDetails } from "./trip.details.ts";
 import { toTripDto } from "./trip.mapper.ts";
 import {
@@ -17,6 +18,7 @@ import {
   type Tx,
   upsertPlaces,
 } from "./trip.queries.ts";
+import { assertChronological, timeSlotOf } from "./trip.schedule.ts";
 import type { CreateTripInput, StopInput, TripPatch } from "./trip.validation.ts";
 
 type StopIdMap = Record<string, string>;
@@ -77,6 +79,9 @@ const saveDrawer = async (
   const kept = new Set(stops.flatMap((stop) => stop.publicId ?? []));
   if ([...kept].some((id) => !saved.has(id)))
     throw badRequest("A stop does not belong to this trip");
+  assertChronological(
+    stops.map(({ publicId }) => (publicId ? timeSlotOf(saved.get(publicId)!) : undefined)),
+  );
 
   await removeStops(
     tx,
@@ -100,6 +105,7 @@ const saveDrawer = async (
 
 const saveScope = (tx: Tx, trip: TripRow, patch: TripPatch): Promise<SaveResult> => {
   if (patch.placeDetails) return savePlaceDetails(tx, trip.id, patch.placeDetails);
+  if (patch.calendar) return saveCalendar(tx, trip, patch.calendar);
   return saveDrawer(tx, trip, patch);
 };
 
