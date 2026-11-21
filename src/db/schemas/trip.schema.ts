@@ -5,12 +5,18 @@ import {
   doublePrecision,
   index,
   integer,
+  numeric,
+  pgEnum,
   pgTable,
+  text,
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
+import { RESERVATIONS } from "../../modules/trip/trip.types.ts";
 import { identity, timestamps, timestamptz } from "../utils/columns.ts";
 import { userTable } from "./user.schema.ts";
+
+export const reservationEnum = pgEnum("reservation", RESERVATIONS);
 
 export const tripTable = pgTable(
   "trips",
@@ -42,6 +48,12 @@ export const tripPlaceTable = pgTable(
     streetAddress: varchar("street_address", { length: 500 }).notNull().default(""),
     areaAddress: varchar("area_address", { length: 500 }).notNull().default(""),
     category: varchar({ length: 255 }).notNull().default(""),
+    type: varchar({ length: 255 }).notNull().default(""),
+    details: text().notNull().default(""),
+    notes: text().notNull().default(""),
+    url: varchar({ length: 2048 }).notNull().default(""),
+    reservations: reservationEnum(),
+    price: numeric({ precision: 12, scale: 2, mode: "number" }),
 
     latitude: doublePrecision().notNull(),
     longitude: doublePrecision().notNull(),
@@ -52,6 +64,7 @@ export const tripPlaceTable = pgTable(
     uniqueIndex("trip_places_trip_key_unique").on(table.tripId, table.placeKey),
     check("trip_places_latitude_check", sql`${table.latitude} BETWEEN -90 AND 90`),
     check("trip_places_longitude_check", sql`${table.longitude} BETWEEN -180 AND 180`),
+    check("trip_places_price_check", sql`${table.price} >= 0`),
   ],
 );
 

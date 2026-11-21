@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db } from "../../db";
 import { badRequest, conflict, notFound } from "../../lib/errors.ts";
+import { savePlaceDetails } from "./trip.details.ts";
 import { toTripDto } from "./trip.mapper.ts";
 import {
   findTrip,
@@ -98,6 +99,7 @@ const saveDrawer = async (
 };
 
 const saveScope = (tx: Tx, trip: TripRow, patch: TripPatch): Promise<SaveResult> => {
+  if (patch.placeDetails) return savePlaceDetails(tx, trip.id, patch.placeDetails);
   return saveDrawer(tx, trip, patch);
 };
 

@@ -8,6 +8,7 @@ import {
   tripTable,
 } from "../../db/schemas/trip.schema.ts";
 import { recordset, single } from "../../db/utils/sql.ts";
+import type { PlaceDetailsInput } from "./trip.validation.ts";
 
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -99,6 +100,25 @@ export const upsertPlaces = async (tx: Tx, tripId: number, places: NewPlace[]) =
       ),
     );
   return new Map(rows.map((row) => [row.placeKey, row.id]));
+};
+
+/** Updates each place in one statement; returns how many belong to the trip. */
+export const updatePlaceDetails = async (tx: Tx, tripId: number, places: PlaceDetailsInput) => {
+  if (!places.length) return 0;
+  const updated = await tx.execute(sql`
+    UPDATE ${tripPlaceTable} SET
+      category = changes.category, type = changes.type, details = changes.details,
+      notes = changes.notes, url = changes.url, reservations = changes.reservations,
+      price = changes.price, updated_at = now()
+    FROM ${recordset(
+      places,
+      sql`"publicId" uuid, category text, type text, details text, notes text, url text,
+        reservations reservation, price numeric`,
+    )}
+    WHERE ${tripPlaceTable.tripId} = ${tripId} AND ${tripPlaceTable.publicId} = changes."publicId"
+    RETURNING ${tripPlaceTable.id}
+  `);
+  return updated.length;
 };
 
 export const insertStops = async (
