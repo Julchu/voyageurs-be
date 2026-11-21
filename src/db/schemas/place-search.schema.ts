@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { type InferSelectModel, sql } from "drizzle-orm";
 import { check, doublePrecision, index, integer, pgTable, varchar } from "drizzle-orm/pg-core";
 import { identity, timestamps } from "../utils/columns.ts";
 import { userTable } from "./user.schema.ts";
@@ -27,4 +27,4 @@ export const placeSearchTable = pgTable(
   ],
 );
 
-export type SelectPlaceSearch = typeof placeSearchTable.$inferSelect;
+export type SelectPlaceSearch = InferSelectModel<typeof placeSearchTable>;

@@ -1,3 +1,4 @@
+import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { jsonb, pgTable, varchar } from "drizzle-orm/pg-core";
 import { Color, type UserPreferences } from "../../types";
 import { identity, timestamps } from "../utils/columns.ts";
@@ -16,5 +17,5 @@ export const userTable = pgTable("users", {
   ...timestamps,
 });
 
-export type SelectUser = typeof userTable.$inferSelect;
-export type InsertUser = typeof userTable.$inferInsert;
+export type SelectUser = InferSelectModel<typeof userTable>;
+export type InsertUser = InferInsertModel<typeof userTable>;

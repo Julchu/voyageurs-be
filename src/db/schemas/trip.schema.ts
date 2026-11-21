@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
 import {
   boolean,
   check,
@@ -77,7 +77,7 @@ export const tripStopTable = pgTable(
   ],
 );
 
-export type SelectTrip = typeof tripTable.$inferSelect;
-export type InsertTrip = typeof tripTable.$inferInsert;
-export type SelectTripPlace = typeof tripPlaceTable.$inferSelect;
-export type InsertTripPlace = typeof tripPlaceTable.$inferInsert;
+export type SelectTrip = InferSelectModel<typeof tripTable>;
+export type InsertTrip = InferInsertModel<typeof tripTable>;
+export type SelectTripPlace = InferSelectModel<typeof tripPlaceTable>;
+export type InsertTripPlace = InferInsertModel<typeof tripPlaceTable>;
