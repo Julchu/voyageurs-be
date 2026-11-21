@@ -1,11 +1,20 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "dabe82d9-14cd-4a06-90cd-68751824bd76",
+  "id": "a7e253ab-bfed-45ee-9e98-a89d100d4558",
   "prevIds": [
-    "72f83e9a-3862-4c12-aee0-243d162f273c"
+    "4c9881eb-d361-4004-bfdb-2b42099a5162"
   ],
   "ddl": [
+    {
+      "values": [
+        "booked",
+        "needs_reservation"
+      ],
+      "name": "reservation",
+      "entityType": "enums",
+      "schema": "public"
+    },
     {
       "isRlsEnabled": false,
       "name": "place_searches",
@@ -434,6 +443,84 @@
       "table": "trip_places"
     },
     {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "type",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "details",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "notes",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "varchar(2048)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "''",
+      "generated": null,
+      "identity": null,
+      "name": "url",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "reservation",
+      "typeSchema": "public",
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "reservations",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "type": "numeric(12,2)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "price",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
       "type": "double precision",
       "typeSchema": null,
       "notNull": true,
@@ -619,7 +706,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "visit_date",
+      "name": "slot_date",
       "entityType": "columns",
       "schema": "public",
       "table": "trip_stops"
@@ -632,7 +719,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "visit_start",
+      "name": "slot_start",
       "entityType": "columns",
       "schema": "public",
       "table": "trip_stops"
@@ -645,7 +732,7 @@
       "default": null,
       "generated": null,
       "identity": null,
-      "name": "visit_end",
+      "name": "slot_end",
       "entityType": "columns",
       "schema": "public",
       "table": "trip_stops"
@@ -658,7 +745,7 @@
       "default": "false",
       "generated": null,
       "identity": null,
-      "name": "visit_locked",
+      "name": "slot_locked",
       "entityType": "columns",
       "schema": "public",
       "table": "trip_stops"
@@ -1382,15 +1469,22 @@
       "table": "trip_places"
     },
     {
-      "value": "num_nulls(\"visit_date\", \"visit_start\", \"visit_end\") IN (0, 3)",
-      "name": "trip_stops_visit_check",
+      "value": "\"price\" >= 0",
+      "name": "trip_places_price_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "trip_places"
+    },
+    {
+      "value": "num_nulls(\"slot_date\", \"slot_start\", \"slot_end\") IN (0, 3)",
+      "name": "trip_stops_slot_check",
       "entityType": "checks",
       "schema": "public",
       "table": "trip_stops"
     },
     {
-      "value": "\"visit_start\" >= 0 AND \"visit_start\" < \"visit_end\" AND \"visit_end\" <= 1440",
-      "name": "trip_stops_visit_time_check",
+      "value": "\"slot_start\" >= 0 AND \"slot_start\" < \"slot_end\" AND \"slot_end\" <= 1440",
+      "name": "trip_stops_slot_time_check",
       "entityType": "checks",
       "schema": "public",
       "table": "trip_stops"
