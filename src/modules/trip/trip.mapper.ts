@@ -1,6 +1,6 @@
 import type { SelectTripPlace } from "../../db/schemas/trip.schema.ts";
 import type { StopRow, TripRow } from "./trip.queries.ts";
-import { visitOf } from "./trip.schedule.ts";
+import { timeSlotOf } from "./trip.schedule.ts";
 import type { TripDto, TripPlaceDto, TripStopDto } from "./trip.types.ts";
 
 const placeFields = (place: SelectTripPlace) => ({
@@ -46,10 +46,10 @@ export const toTripDto = (trip: TripRow): TripDto => ({
   name: trip.name,
   startDate: trip.startDate,
   endDate: trip.endDate,
-  // Stops are listed in time order, so their visits are too.
-  visits: trip.stops.flatMap((stop) => {
-    const visit = visitOf(stop);
-    return visit ? [{ id: stop.publicId, ...visit }] : [];
+  // Stops are listed in time order, so their slots are too.
+  timeSlots: trip.stops.flatMap((stop) => {
+    const slot = timeSlotOf(stop);
+    return slot ? [{ id: stop.publicId, ...slot }] : [];
   }),
   // A Map keeps each place at its first stop.
   places: [...new Map(trip.stops.map(({ place }) => [place.id, place])).values()].map(toPlaceDto),

@@ -18,7 +18,7 @@ import {
   type Tx,
   upsertPlaces,
 } from "./trip.queries.ts";
-import { assertChronological, visitOf } from "./trip.schedule.ts";
+import { assertChronological, timeSlotOf } from "./trip.schedule.ts";
 import type { CreateTripInput, StopInput, TripPatch } from "./trip.validation.ts";
 
 type StopIdMap = Record<string, string>;
@@ -80,7 +80,7 @@ const saveDrawer = async (
   if ([...kept].some((id) => !saved.has(id)))
     throw badRequest("A stop does not belong to this trip");
   assertChronological(
-    stops.map(({ publicId }) => (publicId ? visitOf(saved.get(publicId)!) : undefined)),
+    stops.map(({ publicId }) => (publicId ? timeSlotOf(saved.get(publicId)!) : undefined)),
   );
 
   await removeStops(

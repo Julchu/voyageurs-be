@@ -14,24 +14,24 @@ import {
   assertReservationKept,
   assertSchedule,
   isOpen,
-  type Visit,
-  visitOf,
+  type Slot,
+  timeSlotOf,
 } from "./trip.schedule.ts";
 import type { SaveResult } from "./trip.service.ts";
 import type { AvailabilityWindow } from "./trip.types.ts";
 import { type CalendarInput, MAX_STOPS } from "./trip.validation.ts";
 
-const stopPlan = (publicId: string, position: number, visit?: Visit) => ({
+const stopPlan = (publicId: string, position: number, slot?: Slot) => ({
   publicId,
   position,
-  visitDate: visit?.date ?? null,
-  visitStart: visit?.startMinute ?? null,
-  visitEnd: visit?.endMinute ?? null,
-  visitLocked: visit?.locked ?? false,
+  slotDate: slot?.date ?? null,
+  slotStart: slot?.startMinute ?? null,
+  slotEnd: slot?.endMinute ?? null,
+  slotLocked: slot?.locked ?? false,
 });
 
 /**
- * Saves trip dates, every visit, changed open hours, duplicated stops and the list order together.
+ * Saves trip dates, every time slot, changed open hours, duplicated stops and the list order together.
  * Copies use temporary client IDs until saved. Everything is checked before anything is written.
  */
 export const saveCalendar = async (
@@ -72,21 +72,21 @@ export const saveCalendar = async (
     hours.set(place.id, { place, availability });
   }
 
-  const visits = new Map(
-    calendar.visits.map((visit) => [
-      resolve(visit.stopId),
-      { ...visit, stopId: resolve(visit.stopId) },
+  const slots = new Map(
+    calendar.timeSlots.map((slot) => [
+      resolve(slot.stopId),
+      { ...slot, stopId: resolve(slot.stopId) },
     ]),
   );
-  assertSchedule(calendar.startDate, calendar.endDate, [...visits.values()]);
-  for (const visit of visits.values()) {
-    const place = placeOf.get(visit.stopId);
-    if (!place) throw badRequest("A visit's stop does not belong to this trip");
-    if (!isOpen(hours.get(place.id)?.availability ?? place.availability, visit))
-      throw badRequest("A visit falls outside its open hours. Move or remove it first.");
+  assertSchedule(calendar.startDate, calendar.endDate, [...slots.values()]);
+  for (const slot of slots.values()) {
+    const place = placeOf.get(slot.stopId);
+    if (!place) throw badRequest("A time slot's stop does not belong to this trip");
+    if (!isOpen(hours.get(place.id)?.availability ?? place.availability, slot))
+      throw badRequest("A time slot falls outside its open hours. Move or remove it first.");
   }
-  for (const stop of trip.stops) assertReservationKept(visitOf(stop), visits.get(stop.publicId));
-  assertChronological(order.map((id) => visits.get(id)));
+  for (const stop of trip.stops) assertReservationKept(timeSlotOf(stop), slots.get(stop.publicId));
+  assertChronological(order.map((id) => slots.get(id)));
 
   await insertStops(
     tx,
@@ -100,11 +100,12 @@ export const saveCalendar = async (
     tx,
     trip.id,
     order
-      .map((publicId, position) => stopPlan(publicId, position, visits.get(publicId)))
+      .map((publicId, position) => stopPlan(publicId, position, slots.get(publicId)))
       .filter((plan) => {
         const stop = saved.get(plan.publicId);
         return (
-          !stop || !isDeepStrictEqual(plan, stopPlan(stop.publicId, stop.position, visitOf(stop)))
+          !stop ||
+          !isDeepStrictEqual(plan, stopPlan(stop.publicId, stop.position, timeSlotOf(stop)))
         );
       }),
   );

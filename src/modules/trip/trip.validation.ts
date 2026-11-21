@@ -43,7 +43,7 @@ const windowSchema = z
     "Open hours must end after they start",
   );
 
-const visitSchema = z
+const timeSlotSchema = z
   .object({
     stopId: publicIdSchema,
     date: z.string().date(),
@@ -51,18 +51,18 @@ const visitSchema = z
     endMinute: minuteSchema,
     locked: z.boolean().default(false),
   })
-  .refine((visit) => visit.endMinute > visit.startMinute, "Visits must end after they start");
+  .refine((slot) => slot.endMinute > slot.startMinute, "Time slots must end after they start");
 
-/** The calendar sends every visit, changed open hours (per stop) and the full order, copies included. */
+/** The calendar sends every time slot, changed open hours (per stop) and the full order, copies included. */
 const calendarSchema = z.object({
   startDate: z.string().date().nullable(),
   endDate: z.string().date().nullable(),
-  visits: z
-    .array(visitSchema)
+  timeSlots: z
+    .array(timeSlotSchema)
     .max(MAX_STOPS)
     .refine(
-      (visits) => isUnique(visits.map((visit) => visit.stopId)),
-      "Each stop can have one visit; duplicate it for another",
+      (slots) => isUnique(slots.map((slot) => slot.stopId)),
+      "Each stop can have one time slot; duplicate it for another",
     ),
   availability: z
     .array(
