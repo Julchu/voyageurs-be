@@ -6,6 +6,7 @@ import { errorHandler } from "./middleware/error-handler.ts";
 import { geoRouter } from "./modules/geo/geo.routes.ts";
 import { searchRouter } from "./modules/search/search.routes.ts";
 import { tripRouter } from "./modules/trip/trip.routes.ts";
+import { tripadvisorRouter } from "./modules/tripadvisor/tripadvisor.routes.ts";
 import { userRouter } from "./modules/user/user.routes.ts";
 
 const app: Express = express();
@@ -37,6 +38,8 @@ app.use("/user", userRouter);
 app.use("/geo", geoRouter);
 app.use("/trips", tripRouter);
 app.use("/searches", searchRouter);
+// TODO: tighter rate limit for /tripadvisor once billing volume is known
+app.use("/tripadvisor", tripadvisorRouter);
 
 app.use(() => {
   throw notFound();
