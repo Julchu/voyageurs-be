@@ -17,11 +17,11 @@ Each page saves on its own, so a PATCH `/trips/:publicId` holds one scope:
 // Drawer: the name and/or the full stop list (array order sets positions)
 { version, name?, stops? }
 
-// Calendar: dates, every visit, changed open hours (per stop), copies, and the full order.
+// Calendar: dates, every time slot, changed open hours (per stop), copies, and the full order.
 // Temporary copy IDs may appear anywhere a stop ID does.
 { version, calendar: {
   startDate, endDate,
-  visits: [{ stopId, date, startMinute, endMinute, locked }],
+  timeSlots: [{ stopId, date, startMinute, endMinute, locked }],
   availability: [{ publicId, availability: [{ day, startMinute, endMinute }] }],
   newStops: [{ clientId, sourceStopId }],
   order: [stopId, ...],
@@ -34,8 +34,8 @@ Stops without a `publicId` are added (reusing the trip's place with the same key
 
 The frontend plans moves; the backend only checks the result (`trip.schedule.ts`).
 
-- A stop has at most one visit, stored on the stop row. `visits[].id` is the stop ID. For another visit to the same place, duplicate the stop (`newStops`): the copy shares the place, so it keeps its details and open hours.
-- Visits sit inside one trip day in 30-minute steps, inside the place's open hours, without overlapping. Times are destination-local; weekdays run Sunday (0) to Saturday (6). Empty open hours mean open anytime.
+- A stop has at most one time slot, stored on the stop row. `timeSlots[].id` is the stop ID. For another time slot at the same place, duplicate the stop (`newStops`): the copy shares the place, so it keeps its details and open hours.
+- Time slots sit inside one trip day in 30-minute steps, inside the place's open hours, without overlapping. Times are destination-local; weekdays run Sunday (0) to Saturday (6). Empty open hours mean open anytime.
 - Scheduled stops stay in time order in the list. Drawer and calendar saves both check this; unscheduled stops can sit anywhere.
-- A reserved (`locked`) visit keeps its time until unreserved. Removing it is allowed.
-- Trip dates are both set or both empty, up to 366 days. Deleting a stop deletes its visit.
+- A reserved (`locked`) time slot keeps its time until unreserved. Removing it is allowed.
+- Trip dates are both set or both empty, up to 366 days. Deleting a stop deletes its time slot.

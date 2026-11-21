@@ -83,23 +83,23 @@ export const tripStopTable = pgTable(
     position: integer().notNull(),
     visited: boolean().notNull().default(false),
     visitedAt: timestamptz("visited_at"),
-    // A stop's single visit: one trip day, destination-local minutes.
-    visitDate: date("visit_date"),
-    visitStart: smallint("visit_start"),
-    visitEnd: smallint("visit_end"),
-    visitLocked: boolean("visit_locked").notNull().default(false),
+    // A stop's single time slot: one trip day, destination-local minutes.
+    slotDate: date("slot_date"),
+    slotStart: smallint("slot_start"),
+    slotEnd: smallint("slot_end"),
+    slotLocked: boolean("slot_locked").notNull().default(false),
     ...timestamps,
   },
   (table) => [
     index("trip_stops_trip_position_idx").on(table.tripId, table.position),
     index("trip_stops_place_id_idx").on(table.placeId),
     check(
-      "trip_stops_visit_check",
-      sql`num_nulls(${table.visitDate}, ${table.visitStart}, ${table.visitEnd}) IN (0, 3)`,
+      "trip_stops_slot_check",
+      sql`num_nulls(${table.slotDate}, ${table.slotStart}, ${table.slotEnd}) IN (0, 3)`,
     ),
     check(
-      "trip_stops_visit_time_check",
-      sql`${table.visitStart} >= 0 AND ${table.visitStart} < ${table.visitEnd} AND ${table.visitEnd} <= 1440`,
+      "trip_stops_slot_time_check",
+      sql`${table.slotStart} >= 0 AND ${table.slotStart} < ${table.slotEnd} AND ${table.slotEnd} <= 1440`,
     ),
   ],
 );

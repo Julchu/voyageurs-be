@@ -135,21 +135,21 @@ export const removeStops = async (tx: Tx, tripId: number, publicIds: string[]) =
 
 export type StopPlan = Pick<
   SelectTripStop,
-  "publicId" | "position" | "visitDate" | "visitStart" | "visitEnd" | "visitLocked"
+  "publicId" | "position" | "slotDate" | "slotStart" | "slotEnd" | "slotLocked"
 >;
 
-/** Saves list positions and visits together, in one statement. */
+/** Saves list positions and slots together, in one statement. */
 export const saveStopPlans = async (tx: Tx, tripId: number, stops: StopPlan[]) => {
   if (!stops.length) return;
   await tx.execute(sql`
     UPDATE ${tripStopTable} SET
-      position = changes.position, visit_date = changes."visitDate",
-      visit_start = changes."visitStart", visit_end = changes."visitEnd",
-      visit_locked = changes."visitLocked", updated_at = now()
+      position = changes.position, slot_date = changes."slotDate",
+      slot_start = changes."slotStart", slot_end = changes."slotEnd",
+      slot_locked = changes."slotLocked", updated_at = now()
     FROM ${recordset(
       stops,
-      sql`"publicId" uuid, position integer, "visitDate" date, "visitStart" smallint,
-        "visitEnd" smallint, "visitLocked" boolean`,
+      sql`"publicId" uuid, position integer, "slotDate" date, "slotStart" smallint,
+        "slotEnd" smallint, "slotLocked" boolean`,
     )}
     WHERE ${tripStopTable.tripId} = ${tripId} AND ${tripStopTable.publicId} = changes."publicId"
   `);

@@ -9,8 +9,8 @@ export type AvailabilityWindow = {
   endMinute: number;
 };
 
-/** A stop's single visit, within one day. `id` is the stop ID; `locked` shows as "Reserved". */
-export type ScheduledVisit = {
+/** A stop's single time slot, within one day. `id` is the stop ID; `locked` shows as "Reserved". */
+export type TimeSlot = {
   id: string;
   stopId: string;
   date: string;
@@ -54,8 +54,8 @@ export type TripDto = Timestamps & {
   name: string;
   startDate: string | null;
   endDate: string | null;
-  /** Visits in time order, one per scheduled stop. */
-  visits: ScheduledVisit[];
+  /** Time slots in time order, one per scheduled stop. */
+  timeSlots: TimeSlot[];
   /** Places with at least one stop, in trip order. */
   places: TripPlaceDto[];
   stops: TripStopDto[];
