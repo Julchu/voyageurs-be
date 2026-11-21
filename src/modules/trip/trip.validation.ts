@@ -1,60 +1,57 @@
 import { z } from "zod";
-import type { CreateTripInput, TripStopInput, UpdateTripInput } from "./trip.types.ts";
+import { coordinatesSchema, mapboxIdSchema, publicIdSchema } from "../../lib/validation.ts";
 
-export const publicIdSchema = z.string().uuid();
+export const MAX_STOPS = 1000;
 
-const coordinatesSchema = z.object({
-  lat: z.number().gte(-90).lte(90),
-  lng: z.number().gte(-180).lte(180),
-});
+const isUnique = (values: unknown[]) => new Set(values).size === values.length;
 
-const tripStopBodySchema = z.object({
+const nameSchema = z.string().trim().min(1).max(255);
+
+const stopSchema = z.object({
   publicId: publicIdSchema.optional(),
-  mapboxId: z.string().trim().min(1).max(1024).optional(),
-  name: z.string().trim().min(1).max(255),
+  clientId: publicIdSchema.optional(),
+  mapboxId: mapboxIdSchema,
+  name: nameSchema,
   streetAddress: z.string().trim().max(500).default(""),
   areaAddress: z.string().trim().max(500).default(""),
   category: z.string().trim().max(255).default(""),
   coordinates: coordinatesSchema,
-}) satisfies z.ZodType<TripStopInput>;
-
-// Array order determines positions. Full saves preserve stored visited state.
-const stopsSchema = z
-  .array(tripStopBodySchema)
-  .max(1000)
-  .refine(
-    (stops) => {
-      const ids = stops.flatMap((stop) => {
-        const id = stop.publicId;
-        return id ? [id] : [];
-      });
-      return new Set(ids).size === ids.length;
-    },
-    { message: "Duplicate stop IDs" },
-  );
-
-const tripBodySchema = z.object({
-  name: z.string().trim().min(1).max(255).default("Current trip"),
-  stops: stopsSchema.default([]),
 });
 
-export const createTripBodySchema = tripBodySchema.refine(
-  (value) => value.stops.every((stop) => !stop.publicId),
-  { message: "New trips cannot contain saved stop IDs" },
-) satisfies z.ZodType<CreateTripInput>;
+// The full list: array order sets positions. Place fields are only read for new stops.
+const stopsSchema = z
+  .array(stopSchema)
+  .max(MAX_STOPS)
+  .refine((stops) => isUnique(stops.flatMap((stop) => stop.publicId ?? [])), "Duplicate stop IDs")
+  .refine(
+    (stops) => isUnique(stops.flatMap((stop) => stop.clientId ?? [])),
+    "Duplicate temporary stop IDs",
+  );
 
-export const updateTripBodySchema = tripBodySchema
-  .partial()
-  .extend({ version: z.number().int().positive().safe() })
-  .refine((value) => value.name !== undefined || value.stops !== undefined, {
-    message: "Nothing to update",
-  }) satisfies z.ZodType<UpdateTripInput>;
+export const createTripSchema = z.object({
+  name: nameSchema.default("Current trip"),
+  stops: stopsSchema
+    .refine((stops) => stops.every((stop) => !stop.publicId), "New trips cannot have saved stops")
+    .default([]),
+});
 
-export const publicIdFrom = (value: string | undefined) => {
-  const parsed = publicIdSchema.safeParse(value);
-  return parsed.success ? parsed.data : undefined;
-};
+// The drawer saves name and stops; every other key is its own scope.
+const DRAWER_KEYS = new Set(["name", "stops"]);
+const scopeOf = (key: string) => (DRAWER_KEYS.has(key) ? "drawer" : key);
 
-export type TripStopBody = z.infer<typeof tripStopBodySchema>;
-export type CreateTripBody = z.infer<typeof createTripBodySchema>;
-export type UpdateTripBody = z.infer<typeof updateTripBodySchema>;
+/** Each page saves on its own, so a patch holds one scope. */
+export const tripPatchSchema = z
+  .object({
+    version: z.number().int().positive().safe(),
+    name: nameSchema.optional(),
+    stops: stopsSchema.optional(),
+  })
+  .strict()
+  .refine(({ version: _version, ...scopes }) => {
+    const keys = Object.entries(scopes).flatMap(([key, value]) => (value === undefined ? [] : key));
+    return new Set(keys.map(scopeOf)).size <= 1;
+  }, "Save one page at a time");
+
+export type StopInput = z.infer<typeof stopSchema>;
+export type CreateTripInput = z.infer<typeof createTripSchema>;
+export type TripPatch = z.infer<typeof tripPatchSchema>;

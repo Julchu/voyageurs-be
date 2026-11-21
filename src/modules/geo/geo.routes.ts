@@ -1,28 +1,24 @@
 import { Router } from "express";
-import { clientIp, isPublicIp, normalizeIp } from "../../utils/client-ip.ts";
-import { fetchGeo } from "../../utils/geo.ts";
+import { requireUser } from "../../middleware/require-user.ts";
+import { notFound } from "../../lib/errors.ts";
+import { clientIp, publicIp } from "../../utils/client-ip.ts";
+import { fetchGeo } from "./geo.service.ts";
 
 export const geoRouter: Router = Router();
 
-geoRouter.post("/", async (req, res) => {
-  const fromRequest = clientIp(req);
-  const fromBody =
-    !fromRequest && process.env.NODE_ENV === "development" && typeof req.body?.ip === "string"
-      ? req.body.ip
-      : undefined;
-  const ip = fromRequest ?? (fromBody && isPublicIp(fromBody) ? normalizeIp(fromBody) : undefined);
+// Local requests come from a private address, so development may send a public one.
+const devIp = (value: unknown) =>
+  process.env.NODE_ENV === "development" && typeof value === "string" ? publicIp(value) : undefined;
 
-  if (!ip) {
-    res.status(404).json({ success: false, error: "Client IP unavailable" });
-    return;
-  }
+geoRouter.post(
+  "/",
+  requireUser(async (req, res) => {
+    const ip = clientIp(req) ?? devIp(req.body?.ip);
+    if (!ip) throw notFound("Client IP unavailable");
 
-  const geo = await fetchGeo(ip);
+    const geo = await fetchGeo(ip);
+    if (!geo) throw notFound("Geolocation unavailable");
 
-  if (!geo) {
-    res.status(404).json({ success: false, error: "Geolocation unavailable" });
-    return;
-  }
-
-  res.json({ success: true, data: geo });
-});
+    res.json({ success: true, data: geo });
+  }),
+);

@@ -1,5 +1,4 @@
-import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
-import { sql } from "drizzle-orm";
+import { type InferInsertModel, type InferSelectModel, sql } from "drizzle-orm";
 import {
   boolean,
   check,
@@ -7,61 +6,78 @@ import {
   index,
   integer,
   pgTable,
-  timestamp,
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
-import { requiredColumns, timestamps } from "../utils/shared-schema.ts";
+import { identity, timestamps, timestamptz } from "../utils/columns.ts";
 import { userTable } from "./user.schema.ts";
 
 export const tripTable = pgTable(
   "trips",
   {
-    ...requiredColumns,
+    ...identity,
     userId: integer("user_id")
-      .references(() => userTable.id, { onDelete: "cascade" })
-      .notNull(),
+      .notNull()
+      .references(() => userTable.id, { onDelete: "cascade" }),
     name: varchar({ length: 255 }).notNull(),
+    // Bumped by every save, so a stale version means the trip changed elsewhere.
     version: integer().notNull().default(1),
     ...timestamps,
   },
-  (table) => [
-    uniqueIndex("trips_public_id_unique").on(table.publicId),
-    index("trips_user_id_idx").on(table.userId),
-  ],
+  (table) => [index("trips_user_id_idx").on(table.userId)],
 );
 
-export const tripStopTable = pgTable(
-  "trip_stops",
+/** A destination, once per trip. Every stop there shares its details. */
+export const tripPlaceTable = pgTable(
+  "trip_places",
   {
-    ...requiredColumns,
+    ...identity,
     tripId: integer("trip_id")
-      .references(() => tripTable.id, { onDelete: "cascade" })
-      .notNull(),
+      .notNull()
+      .references(() => tripTable.id, { onDelete: "cascade" }),
+    // Mapbox ID, or "lat,lng" without one.
+    placeKey: varchar("place_key", { length: 1024 }).notNull(),
     mapboxId: varchar("mapbox_id", { length: 1024 }),
     name: varchar({ length: 255 }).notNull(),
     streetAddress: varchar("street_address", { length: 500 }).notNull().default(""),
     areaAddress: varchar("area_address", { length: 500 }).notNull().default(""),
     category: varchar({ length: 255 }).notNull().default(""),
+
     latitude: doublePrecision().notNull(),
     longitude: doublePrecision().notNull(),
-    position: integer().notNull(),
-    visited: boolean().notNull().default(false),
-    visitedAt: timestamp("visited_at"),
+
     ...timestamps,
   },
   (table) => [
-    uniqueIndex("trip_stops_public_id_unique").on(table.publicId),
+    uniqueIndex("trip_places_trip_key_unique").on(table.tripId, table.placeKey),
+    check("trip_places_latitude_check", sql`${table.latitude} BETWEEN -90 AND 90`),
+    check("trip_places_longitude_check", sql`${table.longitude} BETWEEN -180 AND 180`),
+  ],
+);
+
+/** One row in the trip list, at a place. */
+export const tripStopTable = pgTable(
+  "trip_stops",
+  {
+    ...identity,
+    tripId: integer("trip_id")
+      .notNull()
+      .references(() => tripTable.id, { onDelete: "cascade" }),
+    placeId: integer("place_id")
+      .notNull()
+      .references(() => tripPlaceTable.id, { onDelete: "cascade" }),
+    position: integer().notNull(),
+    visited: boolean().notNull().default(false),
+    visitedAt: timestamptz("visited_at"),
+    ...timestamps,
+  },
+  (table) => [
     index("trip_stops_trip_position_idx").on(table.tripId, table.position),
-    check("trip_stops_latitude_check", sql`${table.latitude} >= -90 AND ${table.latitude} <= 90`),
-    check(
-      "trip_stops_longitude_check",
-      sql`${table.longitude} >= -180 AND ${table.longitude} <= 180`,
-    ),
+    index("trip_stops_place_id_idx").on(table.placeId),
   ],
 );
 
 export type SelectTrip = InferSelectModel<typeof tripTable>;
 export type InsertTrip = InferInsertModel<typeof tripTable>;
-export type SelectTripStop = InferSelectModel<typeof tripStopTable>;
-export type InsertTripStop = InferInsertModel<typeof tripStopTable>;
+export type SelectTripPlace = InferSelectModel<typeof tripPlaceTable>;
+export type InsertTripPlace = InferInsertModel<typeof tripPlaceTable>;

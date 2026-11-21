@@ -21,44 +21,33 @@ export type UserPreferences = {
   lastLocation?: Coordinates;
 };
 
-export type PlaceSearch = {
-  publicId: string;
-  createdAt: string | null;
-  updatedAt: string | null;
+export type PlaceSearchInput = {
   query: string;
+  mapboxId?: string;
   name: string;
   streetAddress: string;
   areaAddress: string;
   category: string;
   coordinates: Coordinates;
+};
+
+export type PlaceSearch = PlaceSearchInput & {
+  publicId: string;
+  createdAt: string;
+  updatedAt: string;
   searchedAt: string;
 };
 
-export type PlaceSearchInput = {
-  query: string;
-  name: string;
-  streetAddress: string;
-  areaAddress: string;
-  category: string;
-  coordinates: Coordinates;
-};
-
-export interface User {
+export type User = {
   publicId: string;
-  createdAt: string | null;
-  updatedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
   email: string;
   image?: string | null;
   name: string;
   preferences?: UserPreferences;
   lastLocation?: Coordinates;
-}
-
-export type AuthRequest<
-  TParams = Record<string, unknown>,
-  TResBody = unknown,
-  TReqBody = unknown,
-  TQuery = Record<string, unknown>,
-> = Request<TParams, TResBody, TReqBody, TQuery> & {
-  userId?: number;
 };
+
+/** A request that passed requireUser. */
+export type AuthRequest<Params = Record<string, string>> = Request<Params> & { userId: number };
