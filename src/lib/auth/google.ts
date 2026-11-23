@@ -20,7 +20,7 @@ export const verifyGoogleCode = async (code: string, codeVerifier: string) => {
     (error) => {
       console.error(
         "Google token exchange failed",
-        error instanceof Error ? error.name : "unknown",
+        error instanceof Error ? error.message : "unknown",
       );
       return undefined;
     },
