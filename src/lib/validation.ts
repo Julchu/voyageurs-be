@@ -19,9 +19,11 @@ export const mapboxIdSchema = z
 export const isPublicId = (value: unknown): value is string =>
   publicIdSchema.safeParse(value).success;
 
-/** Parses request input, failing with its first issue as a 400. */
+/** Parses request input, failing with its first issue as a 400; generic zod messages get their field path. */
 export const parse = <T extends z.ZodTypeAny>(schema: T, value: unknown): z.output<T> => {
   const result = schema.safeParse(value);
-  if (!result.success) throw badRequest(result.error.issues[0]?.message ?? "Invalid request");
-  return result.data;
+  if (result.success) return result.data;
+  const [issue] = result.error.issues;
+  const field = issue?.path.length && issue.code !== "custom" ? `${issue.path.join(".")}: ` : "";
+  throw badRequest(`${field}${issue?.message ?? "Invalid request"}`);
 };

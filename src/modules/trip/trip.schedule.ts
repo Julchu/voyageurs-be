@@ -5,7 +5,7 @@ import type { AvailabilityWindow, TimeSlot } from "./trip.types.ts";
 // Calendar rules. The frontend plans moves; the backend only checks the result.
 
 export const STEP_MINUTES = 30;
-export const MAX_TRIP_DAYS = 366;
+const MAX_TRIP_DAYS = 366;
 
 export type Slot = Omit<TimeSlot, "id">;
 
@@ -22,8 +22,17 @@ const sameTime = (left: Slot, right: Slot) =>
   left.endMinute === right.endMinute;
 
 /** True when an item and the one before it break the rule. */
-const someConsecutive = <T>(sorted: T[], broken: (previous: T, item: T) => boolean) =>
-  sorted.some((item, index) => index > 0 && broken(sorted[index - 1]!, item));
+const someConsecutive = <T extends object>(
+  sorted: T[],
+  broken: (previous: T, item: T) => boolean,
+) => {
+  let previous: T | undefined;
+  for (const item of sorted) {
+    if (previous && broken(previous, item)) return true;
+    previous = item;
+  }
+  return false;
+};
 
 export const timeSlotOf = (stop: SelectTripStop): Slot | undefined =>
   stop.slotDate && stop.slotStart !== null && stop.slotEnd !== null

@@ -17,5 +17,5 @@ export const updateUserSchema = z.object({
 
 export const googleLoginSchema = z.object({
   code: z.string({ required_error: "Missing authorization code" }).min(1),
-  codeVerifier: z.string({ required_error: "Missing authorization code" }).min(1),
+  codeVerifier: z.string({ required_error: "Missing code verifier" }).min(1),
 });

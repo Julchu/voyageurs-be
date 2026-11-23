@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { coordinatesSchema, mapboxIdSchema, publicIdSchema } from "../../lib/validation.ts";
-import { sortWindows, windowsOverlap } from "./trip.schedule.ts";
+import { sortWindows, STEP_MINUTES, windowsOverlap } from "./trip.schedule.ts";
 import { RESERVATIONS, type StopDetails } from "./trip.types.ts";
 
 export const MAX_STOPS = 1000;
@@ -9,9 +9,11 @@ const isUnique = (values: unknown[]) => new Set(values).size === values.length;
 
 const nameSchema = z.string().trim().min(1).max(255);
 
-const stopSchema = z.object({
-  publicId: publicIdSchema.optional(),
-  clientId: publicIdSchema.optional(),
+// A saved stop is only its ID; extra place fields are stripped.
+const savedStopSchema = z.object({ publicId: publicIdSchema });
+
+const newStopSchema = z.object({
+  clientId: publicIdSchema,
   mapboxId: mapboxIdSchema,
   name: nameSchema,
   streetAddress: z.string().trim().max(500).default(""),
@@ -20,17 +22,27 @@ const stopSchema = z.object({
   coordinates: coordinatesSchema,
 });
 
-// The full list: array order sets positions. Place fields are only read for new stops.
+const stopSchema = z.union([savedStopSchema, newStopSchema]);
+
+type StopInput = z.infer<typeof stopSchema>;
+export type NewStopInput = z.infer<typeof newStopSchema>;
+
+const isNewStop = (stop: StopInput): stop is NewStopInput => !("publicId" in stop);
+
+// The full list: array order sets positions.
 const stopsSchema = z
   .array(stopSchema)
   .max(MAX_STOPS)
-  .refine((stops) => isUnique(stops.flatMap((stop) => stop.publicId ?? [])), "Duplicate stop IDs")
   .refine(
-    (stops) => isUnique(stops.flatMap((stop) => stop.clientId ?? [])),
+    (stops) => isUnique(stops.flatMap((stop) => ("publicId" in stop ? stop.publicId : []))),
+    "Duplicate stop IDs",
+  )
+  .refine(
+    (stops) => isUnique(stops.flatMap((stop) => ("clientId" in stop ? stop.clientId : []))),
     "Duplicate temporary stop IDs",
   );
 
-const minuteSchema = z.number().int().min(0).max(1440).multipleOf(30);
+const minuteSchema = z.number().int().min(0).max(1440).multipleOf(STEP_MINUTES);
 
 const windowSchema = z
   .object({
@@ -53,7 +65,7 @@ const timeSlotSchema = z
   })
   .refine((slot) => slot.endMinute > slot.startMinute, "Time slots must end after they start");
 
-/** The calendar sends every time slot, changed open hours (per stop) and the full order, copies included. */
+/** The calendar sends every time slot, changed open hours (per stop) and, when it changed, the full order, copies included. */
 const calendarSchema = z.object({
   startDate: z.string().date().nullable(),
   endDate: z.string().date().nullable(),
@@ -85,7 +97,7 @@ const calendarSchema = z.object({
       "Duplicate temporary stop IDs",
     )
     .default([]),
-  order: z.array(publicIdSchema).max(MAX_STOPS),
+  order: z.array(publicIdSchema).max(MAX_STOPS).optional(),
 });
 
 export type CalendarInput = z.infer<typeof calendarSchema>;
@@ -93,7 +105,10 @@ export type CalendarInput = z.infer<typeof calendarSchema>;
 export const createTripSchema = z.object({
   name: nameSchema.default("Current trip"),
   stops: stopsSchema
-    .refine((stops) => stops.every((stop) => !stop.publicId), "New trips cannot have saved stops")
+    .refine(
+      (stops): stops is NewStopInput[] => stops.every(isNewStop),
+      "New trips cannot have saved stops",
+    )
     .default([]),
 });
 
@@ -120,11 +135,16 @@ const placeDetailsSchema = z
 
 export type PlaceDetailsInput = z.infer<typeof placeDetailsSchema>;
 
-// The drawer saves name and stops; every other key is its own scope.
-const DRAWER_KEYS = new Set(["name", "stops"]);
-const scopeOf = (key: string) => (DRAWER_KEYS.has(key) ? "drawer" : key);
+export type CreateTripInput = z.infer<typeof createTripSchema>;
 
-/** Each page saves on its own, so a patch holds one scope. */
+/** One page's save: the drawer (name and stops), the stops table (place details) or the calendar. */
+export type TripPatch = { version: number } & (
+  | { scope: "drawer"; name?: string; stops?: StopInput[] }
+  | { scope: "details"; placeDetails: PlaceDetailsInput }
+  | { scope: "calendar"; calendar: CalendarInput }
+);
+
+/** Each page saves on its own, so a patch holds one scope; the wire keeps one key per scope. */
 export const tripPatchSchema = z
   .object({
     version: z.number().int().positive().safe(),
@@ -134,11 +154,13 @@ export const tripPatchSchema = z
     calendar: calendarSchema.optional(),
   })
   .strict()
-  .refine(({ version: _version, ...scopes }) => {
-    const keys = Object.entries(scopes).flatMap(([key, value]) => (value === undefined ? [] : key));
-    return new Set(keys.map(scopeOf)).size <= 1;
-  }, "Save one page at a time");
-
-export type StopInput = z.infer<typeof stopSchema>;
-export type CreateTripInput = z.infer<typeof createTripSchema>;
-export type TripPatch = z.infer<typeof tripPatchSchema>;
+  .refine(
+    ({ name, stops, placeDetails, calendar }) =>
+      [name ?? stops, placeDetails, calendar].filter((scope) => scope !== undefined).length <= 1,
+    "Save one page at a time",
+  )
+  .transform(({ version, name, stops, placeDetails, calendar }): TripPatch => {
+    if (placeDetails) return { version, scope: "details", placeDetails };
+    if (calendar) return { version, scope: "calendar", calendar };
+    return { version, scope: "drawer", name, stops };
+  });

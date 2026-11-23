@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { db } from "../../db";
 import { badRequest, conflict, notFound } from "../../lib/errors.ts";
 import { saveCalendar } from "./trip.calendar.ts";
-import { savePlaceDetails } from "./trip.details.ts";
 import { toTripDto } from "./trip.mapper.ts";
 import {
   findTrip,
@@ -16,33 +15,40 @@ import {
   type TripChanges,
   type TripRow,
   type Tx,
+  updatePlaceDetails,
   upsertPlaces,
 } from "./trip.queries.ts";
 import { assertChronological, timeSlotOf } from "./trip.schedule.ts";
-import type { CreateTripInput, StopInput, TripPatch } from "./trip.validation.ts";
+import type {
+  CreateTripInput,
+  NewStopInput,
+  PlaceDetailsInput,
+  TripPatch,
+} from "./trip.validation.ts";
 
 type StopIdMap = Record<string, string>;
 
 /** What a save scope changed on the trip row, and the IDs of stops it created. */
-export type SaveResult = { trip?: TripChanges; stopIdMap?: StopIdMap };
+type SaveResult = { trip?: TripChanges; stopIdMap?: StopIdMap };
 
 export const listTrips = async (userId: number) => (await findTrips(userId)).map(toTripDto);
 
 // Must match the frontend's placeKey.
-const placeKey = ({ mapboxId, coordinates }: Pick<StopInput, "mapboxId" | "coordinates">) =>
+const placeKey = ({ mapboxId, coordinates }: NewStopInput) =>
   mapboxId ?? `${coordinates.lat},${coordinates.lng}`;
 
 /** Inserts stops at their positions, reusing the trip's places; maps client IDs to new IDs. */
 const addStops = async (
   tx: Tx,
   tripId: number,
-  stops: (StopInput & { position: number })[],
+  stops: (NewStopInput & { position: number })[],
 ): Promise<StopIdMap> => {
+  const added = stops.map((stop) => ({ ...stop, key: placeKey(stop), publicId: randomUUID() }));
   const placeIds = await upsertPlaces(
     tx,
     tripId,
-    stops.map(({ coordinates, ...stop }) => ({
-      placeKey: placeKey({ ...stop, coordinates }),
+    added.map(({ key, coordinates, ...stop }) => ({
+      placeKey: key,
       mapboxId: stop.mapboxId,
       name: stop.name,
       streetAddress: stop.streetAddress,
@@ -52,37 +58,37 @@ const addStops = async (
       longitude: coordinates.lng,
     })),
   );
-  const added = stops.map((stop) => ({ ...stop, publicId: randomUUID() }));
   await insertStops(
     tx,
     tripId,
-    added.map((stop) => ({
-      publicId: stop.publicId,
-      position: stop.position,
-      placeId: placeIds.get(placeKey(stop))!,
-    })),
+    added.map(({ key, publicId, position }) => {
+      const placeId = placeIds.get(key);
+      if (placeId === undefined) throw new Error("A new stop's place was not saved");
+      return { publicId, position, placeId };
+    }),
   );
-  return Object.fromEntries(
-    added.flatMap(({ clientId, publicId }) => (clientId ? [[clientId, publicId]] : [])),
-  );
+  return Object.fromEntries(added.map(({ clientId, publicId }) => [clientId, publicId]));
 };
 
 /** The drawer sends its full list: saved stops move, new ones are added, missing ones removed. */
 const saveDrawer = async (
   tx: Tx,
   trip: TripRow,
-  { name, stops }: TripPatch,
+  { name, stops }: Extract<TripPatch, { scope: "drawer" }>,
 ): Promise<SaveResult> => {
   if (!stops) return { trip: { name } };
 
+  // The saved row for each listed stop, undefined for new ones; a foreign ID fails here.
   const saved = new Map(trip.stops.map((stop) => [stop.publicId, stop]));
-  const kept = new Set(stops.flatMap((stop) => stop.publicId ?? []));
-  if ([...kept].some((id) => !saved.has(id)))
-    throw badRequest("A stop does not belong to this trip");
-  assertChronological(
-    stops.map(({ publicId }) => (publicId ? timeSlotOf(saved.get(publicId)!) : undefined)),
-  );
+  const rows = stops.map((stop) => {
+    if (!("publicId" in stop)) return undefined;
+    const row = saved.get(stop.publicId);
+    if (!row) throw badRequest("A stop does not belong to this trip");
+    return row;
+  });
+  assertChronological(rows.map((row) => row && timeSlotOf(row)));
 
+  const kept = new Set(rows.flatMap((row) => row?.publicId ?? []));
   await removeStops(
     tx,
     trip.id,
@@ -91,22 +97,38 @@ const saveDrawer = async (
   await moveStops(
     tx,
     trip.id,
-    stops.flatMap(({ publicId }, position) =>
-      publicId && saved.get(publicId)?.position !== position ? [{ publicId, position }] : [],
+    rows.flatMap((row, position) =>
+      row && row.position !== position ? [{ publicId: row.publicId, position }] : [],
     ),
   );
   const stopIdMap = await addStops(
     tx,
     trip.id,
-    stops.flatMap((stop, position) => (stop.publicId ? [] : [{ ...stop, position }])),
+    stops.flatMap((stop, position) => ("publicId" in stop ? [] : [{ ...stop, position }])),
   );
   return { trip: { name }, stopIdMap };
 };
 
+/** The stops table saves details per place, so every stop there shows them. */
+const savePlaceDetails = async (
+  tx: Tx,
+  tripId: number,
+  places: PlaceDetailsInput,
+): Promise<SaveResult> => {
+  const updated = await updatePlaceDetails(tx, tripId, places);
+  if (updated !== places.length) throw badRequest("A place does not belong to this trip");
+  return {};
+};
+
 const saveScope = (tx: Tx, trip: TripRow, patch: TripPatch): Promise<SaveResult> => {
-  if (patch.placeDetails) return savePlaceDetails(tx, trip.id, patch.placeDetails);
-  if (patch.calendar) return saveCalendar(tx, trip, patch.calendar);
-  return saveDrawer(tx, trip, patch);
+  switch (patch.scope) {
+    case "drawer":
+      return saveDrawer(tx, trip, patch);
+    case "details":
+      return savePlaceDetails(tx, trip.id, patch.placeDetails);
+    case "calendar":
+      return saveCalendar(tx, trip, patch.calendar);
+  }
 };
 
 export const createTrip = (userId: number, { name, stops }: CreateTripInput) =>

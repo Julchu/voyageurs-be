@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { env } from "../../env.ts";
 import { namesMatch, normalizePlaceName } from "../../utils/place-name.ts";
 
 /**
@@ -15,46 +17,57 @@ const PHOTO_SIZE = 5;
 /** Location ids kept per server instance; the oldest is dropped first. */
 const MAX_CACHED_IDS = 5000;
 
-type TerraLocation = {
-  id: number;
-  names?: { value: string }[];
-  urls?: { tripadvisor?: { main?: string } };
-};
-type TerraNearbyItem = { location: TerraLocation };
-type TerraPhotoItem = {
-  photo?: { original_size_url?: string; original_width?: number; original_height?: number };
-  user?: { username?: string };
-};
+// Terra responses are parsed, not trusted: a location id goes into later request paths.
+const locationSchema = z.object({
+  id: z.number().int(),
+  names: z.array(z.object({ value: z.string() })).nullish(),
+  urls: z.object({ tripadvisor: z.object({ main: z.string().nullish() }).nullish() }).nullish(),
+});
+const nearbySchema = z.object({ data: z.array(z.object({ location: locationSchema })).nullish() });
+const photoItemSchema = z.object({
+  photo: z
+    .object({
+      original_size_url: z.string().nullish(),
+      original_width: z.number().nullish(),
+      original_height: z.number().nullish(),
+    })
+    .nullish(),
+  user: z.object({ username: z.string().nullish() }).nullish(),
+});
+const photosSchema = z.object({ data: z.array(photoItemSchema).nullish() });
 
-export type PlaceLookup = { name: string; lat: number; lng: number; mapboxId?: string };
-export type TripadvisorPhoto = {
+type TerraLocation = z.infer<typeof locationSchema>;
+
+export type PlaceLookup = { name: string; lat: number; lng: number };
+type TripadvisorPhoto = {
   url: string;
   width: number | null;
   height: number | null;
   author?: string;
 };
-export type TripadvisorPhotos = { photos: TripadvisorPhoto[]; tripadvisorUrl?: string };
+type TripadvisorPhotos = { photos: TripadvisorPhoto[]; tripadvisorUrl?: string };
 type LocationMatch = { id: number; webUrl?: string };
 
 const cachedIds = new Map<string, number | null>();
 const pendingLookups = new Map<string, Promise<LocationMatch | null>>();
 
-const terraGet = async <T>(path: string, params: Record<string, string | number> = {}) => {
-  const key = process.env.TRIPADVISOR_API_KEY;
-  if (!key) throw new Error("Missing TRIPADVISOR_API_KEY");
-
+const terraGet = async <T extends z.ZodTypeAny>(
+  schema: T,
+  path: string,
+  params: Record<string, string | number> = {},
+): Promise<z.output<T>> => {
   const url = new URL(`${BASE_URL}${path}`);
   for (const [name, value] of Object.entries(params)) url.searchParams.set(name, String(value));
 
   const response = await fetch(url, {
-    headers: { "X-API-Key": key, Accept: "application/json" },
+    headers: { "X-API-Key": env.TRIPADVISOR_API_KEY, Accept: "application/json" },
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!response.ok) throw new Error(`Tripadvisor ${path} failed with ${response.status}`);
-  return (await response.json()) as T;
+  return schema.parse(await response.json());
 };
 
-const locationWebUrl = (location: TerraLocation) => location.urls?.tripadvisor?.main;
+const locationWebUrl = (location: TerraLocation) => location.urls?.tripadvisor?.main ?? undefined;
 
 const hasName = (location: TerraLocation, name: string) =>
   (location.names ?? []).some(({ value }) => namesMatch(name, value));
@@ -63,7 +76,7 @@ const hasName = (location: TerraLocation, name: string) =>
 const findLocation = async ({ name, lat, lng }: PlaceLookup): Promise<LocationMatch | null> => {
   if (!normalizePlaceName(name)) return null;
 
-  const { data } = await terraGet<{ data?: TerraNearbyItem[] }>("/locations/nearby", {
+  const { data } = await terraGet(nearbySchema, "/locations/nearby", {
     lat,
     lon: lng,
     radius: NEARBY_RADIUS_KM,
@@ -76,8 +89,9 @@ const findLocation = async ({ name, lat, lng }: PlaceLookup): Promise<LocationMa
   return match ? { id: match.location.id, webUrl: locationWebUrl(match.location) } : null;
 };
 
-const cacheKey = ({ name, lat, lng, mapboxId }: PlaceLookup) =>
-  mapboxId ?? `${normalizePlaceName(name)}:${lat.toFixed(4)}:${lng.toFixed(4)}`;
+// Keyed on everything the lookup reads, so one client can't pin wrong photos on a place for everyone.
+const cacheKey = ({ name, lat, lng }: PlaceLookup) =>
+  [normalizePlaceName(name), lat.toFixed(4), lng.toFixed(4)].join("|");
 
 const rememberId = (key: string, id: number | null) => {
   if (cachedIds.size >= MAX_CACHED_IDS) {
@@ -111,22 +125,25 @@ const resolveLocation = async (place: PlaceLookup): Promise<LocationMatch | null
 };
 
 const fetchLocationWebUrl = async (id: number) =>
-  locationWebUrl(await terraGet<TerraLocation>(`/locations/${id}`));
+  locationWebUrl(await terraGet(locationSchema, `/locations/${id}`));
 
 /** Skips photos without an https URL. */
-const toPhoto = ({ photo, user }: TerraPhotoItem): TripadvisorPhoto | undefined => {
+const toPhoto = ({
+  photo,
+  user,
+}: z.infer<typeof photoItemSchema>): TripadvisorPhoto | undefined => {
   const url = photo?.original_size_url;
   if (!url?.startsWith("https://")) return;
   return {
     url,
     width: photo?.original_width ?? null,
     height: photo?.original_height ?? null,
-    author: user?.username,
+    author: user?.username ?? undefined,
   };
 };
 
 const fetchLocationPhotos = async (id: number) => {
-  const { data } = await terraGet<{ data?: TerraPhotoItem[] }>(`/locations/${id}/photos`, {
+  const { data } = await terraGet(photosSchema, `/locations/${id}/photos`, {
     page: 1,
     size: PHOTO_SIZE,
   });

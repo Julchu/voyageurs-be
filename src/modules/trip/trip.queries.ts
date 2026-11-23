@@ -67,7 +67,7 @@ export const saveTrip = (tx: Tx, id: number, changes: TripChanges) =>
     .set({ ...changes, version: sql`${tripTable.version} + 1` })
     .where(eq(tripTable.id, id));
 
-export type NewPlace = Pick<
+type NewPlace = Pick<
   InsertTripPlace,
   | "placeKey"
   | "mapboxId"
@@ -153,7 +153,7 @@ export const removeStops = async (tx: Tx, tripId: number, publicIds: string[]) =
     .where(and(eq(tripStopTable.tripId, tripId), inArray(tripStopTable.publicId, publicIds)));
 };
 
-export type StopPlan = Pick<
+type StopPlan = Pick<
   SelectTripStop,
   "publicId" | "position" | "slotDate" | "slotStart" | "slotEnd" | "slotLocked"
 >;
