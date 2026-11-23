@@ -55,7 +55,7 @@ export const saveCalendar = async (
   if (placeOf.size > MAX_STOPS) throw badRequest(`A trip can have at most ${MAX_STOPS} stops`);
   const resolve = (id: string) => stopIdMap[id] ?? id;
 
-  const order = calendar.order.map(resolve);
+  const order = (calendar.order ?? trip.stops.map((stop) => stop.publicId)).map(resolve);
   if (order.length !== placeOf.size || new Set(order).size !== placeOf.size)
     throw badRequest("The order must list each trip stop once");
   if (!order.every((id) => placeOf.has(id)))

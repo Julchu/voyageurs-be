@@ -53,7 +53,7 @@ const timeSlotSchema = z
   })
   .refine((slot) => slot.endMinute > slot.startMinute, "Time slots must end after they start");
 
-/** The calendar sends every time slot, changed open hours (per stop) and the full order, copies included. */
+/** The calendar sends every time slot, changed open hours (per stop) and, when it changed, the full order, copies included. */
 const calendarSchema = z.object({
   startDate: z.string().date().nullable(),
   endDate: z.string().date().nullable(),
@@ -85,7 +85,7 @@ const calendarSchema = z.object({
       "Duplicate temporary stop IDs",
     )
     .default([]),
-  order: z.array(publicIdSchema).max(MAX_STOPS),
+  order: z.array(publicIdSchema).max(MAX_STOPS).optional(),
 });
 
 export type CalendarInput = z.infer<typeof calendarSchema>;
