@@ -9,7 +9,7 @@ const client = new OAuth2Client({
 
 // A rejected code or ID token is a failed login (401), not a server error.
 const failed = (step: string) => (error: unknown) => {
-  console.error(`Google ${step} failed`, error instanceof Error ? error.name : "unknown");
+  console.error(`Google ${step} failed`, error instanceof Error ? error.message : "unknown");
   return undefined;
 };
 
