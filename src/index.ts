@@ -1,8 +1,7 @@
 import app from "./app.ts";
+import { env } from "./env.ts";
 
-const port = Number(process.env.PORT) || 8001;
-
-app.listen(port, (error) => {
+app.listen(env.PORT, (error) => {
   if (error) throw error;
-  console.log(`API listening on port ${port}`);
+  console.log(`API listening on port ${env.PORT}`);
 });

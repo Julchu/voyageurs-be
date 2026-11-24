@@ -1,4 +1,5 @@
 import { errors, jwtVerify, SignJWT } from "jose";
+import { env } from "../../env.ts";
 
 const ISSUER = "voyageurs";
 const AUDIENCE = "voyageurs-api";
@@ -10,16 +11,9 @@ type TokenType = "access" | "refresh";
 
 export type Session = { userId: number; sessionId: string };
 
-// TODO: validate all env vars once at startup
-const secretKey = (name: string) => {
-  const secret = process.env[name];
-  if (secret && secret.length >= 32) return new TextEncoder().encode(secret);
-  console.error(`${name} must be at least 32 characters`);
-};
-
 const keys = {
-  access: secretKey("JWT_ACCESS_SECRET"),
-  refresh: secretKey("JWT_REFRESH_SECRET"),
+  access: new TextEncoder().encode(env.JWT_ACCESS_SECRET),
+  refresh: new TextEncoder().encode(env.JWT_REFRESH_SECRET),
 };
 
 const maxAge = { access: ACCESS_MAX_AGE_MS, refresh: REFRESH_MAX_AGE_MS };
@@ -27,11 +21,7 @@ const maxAge = { access: ACCESS_MAX_AGE_MS, refresh: REFRESH_MAX_AGE_MS };
 export const bearerToken = (header?: string) =>
   header?.match(/^Bearer (.+)$/)?.[1]?.trim() || undefined;
 
-/** Both tokens name the session: access tokens as `sid`, refresh tokens as their `jti`. */
-export const signToken = async (type: TokenType, userId: number, sessionId: string) => {
-  const key = keys[type];
-  if (!key) return;
-
+const signToken = (type: TokenType, { userId, sessionId }: Session) => {
   const token = new SignJWT({ userId, typ: type, ...(type === "access" && { sid: sessionId }) })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuer(ISSUER)
@@ -39,18 +29,26 @@ export const signToken = async (type: TokenType, userId: number, sessionId: stri
     .setIssuedAt()
     .setExpirationTime(new Date(Date.now() + maxAge[type]));
 
-  return (type === "refresh" ? token.setJti(sessionId) : token).sign(key);
+  return (type === "refresh" ? token.setJti(sessionId) : token).sign(keys[type]);
+};
+
+/** Both tokens name the session: access tokens as `sid`, refresh tokens as their `jti`. */
+export const signTokens = async (session: Session) => {
+  const [accessToken, refreshToken] = await Promise.all([
+    signToken("access", session),
+    signToken("refresh", session),
+  ]);
+  return { accessToken, refreshToken };
 };
 
 export const verifyToken = async (
   type: TokenType,
   token?: string,
 ): Promise<Session | undefined> => {
-  const key = keys[type];
-  if (!key || !token) return;
+  if (!token) return;
 
   try {
-    const { payload } = await jwtVerify(token, key, {
+    const { payload } = await jwtVerify(token, keys[type], {
       algorithms: ["HS256"],
       issuer: ISSUER,
       audience: AUDIENCE,

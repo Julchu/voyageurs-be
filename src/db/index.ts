@@ -1,10 +1,11 @@
 import { drizzle } from "drizzle-orm/postgres-js";
+import { env } from "../env.ts";
 import { relations, schema } from "./relations.ts";
 
 export const db = drizzle({
   connection: {
-    url: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === "production" || process.env.NODE_ENV === "staging",
+    url: env.DATABASE_URL,
+    ssl: env.NODE_ENV !== "development",
   },
   schema,
   relations,

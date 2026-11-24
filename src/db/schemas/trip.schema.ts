@@ -19,6 +19,7 @@ import { type AvailabilityWindow, RESERVATIONS } from "../../modules/trip/trip.t
 import { identity, timestamps, timestamptz } from "../utils/columns.ts";
 import { userTable } from "./user.schema.ts";
 
+// Exported so drizzle-kit includes the enum in migrations.
 export const reservationEnum = pgEnum("reservation", RESERVATIONS);
 
 export const tripTable = pgTable(
@@ -116,7 +117,6 @@ export const tripStopTable = pgTable(
   ],
 );
 
-export type SelectTrip = InferSelectModel<typeof tripTable>;
 export type InsertTrip = InferInsertModel<typeof tripTable>;
 export type SelectTripStop = InferSelectModel<typeof tripStopTable>;
 export type SelectTripPlace = InferSelectModel<typeof tripPlaceTable>;

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { clearAuthCookies, setAuthCookies } from "../../lib/auth/cookies.ts";
 import { bearerToken } from "../../lib/auth/tokens.ts";
-import { notFound, unauthorized } from "../../lib/errors.ts";
+import { unauthorized } from "../../lib/errors.ts";
 import { parse } from "../../lib/validation.ts";
 import { requireUser } from "../../middleware/require-user.ts";
 import { loginWithGoogle, logout, refreshSession } from "./auth.service.ts";
@@ -23,7 +23,6 @@ userRouter.patch(
   "/",
   requireUser(async (req, res) => {
     const user = await updateUser(req.userId, parse(updateUserSchema, req.body ?? {}));
-    if (!user) throw notFound("User not found");
     res.json({ success: true, data: toUserDto(user) });
   }),
 );
@@ -38,13 +37,13 @@ userRouter.post("/login/google", async (req, res) => {
 });
 
 userRouter.post("/refresh", async (req, res) => {
-  const accessToken = await refreshSession(bearerToken(req.header("Authorization")));
-  if (!accessToken) {
+  const tokens = await refreshSession(bearerToken(req.header("Authorization")));
+  if (!tokens) {
     clearAuthCookies(res);
     throw unauthorized();
   }
 
-  setAuthCookies(res, { accessToken });
+  setAuthCookies(res, tokens);
   res.json({ success: true });
 });
 

@@ -1,30 +1,37 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { env } from "../../env.ts";
 import { verifyGoogleCode } from "../../lib/auth/google.ts";
-import { REFRESH_MAX_AGE_MS, signToken, verifyToken } from "../../lib/auth/tokens.ts";
-import { isSessionCurrent, revokeSessions, storeSession } from "./auth.queries.ts";
+import { REFRESH_MAX_AGE_MS, signTokens, verifyToken } from "../../lib/auth/tokens.ts";
+import {
+  endSession,
+  extendSession,
+  isSessionCurrent,
+  pruneSessions,
+  storeSession,
+} from "./auth.queries.ts";
 import { getUserByEmail, insertUser } from "./user.queries.ts";
 
+const sha256 = (value: string) => createHash("sha256").update(value).digest();
+
 // TODO: create seed data before MASTER_KEY can be used
-const devMasterKey = ["development", "staging"].includes(process.env.NODE_ENV ?? "")
-  ? process.env.MASTER_KEY
-  : undefined;
-const isDevMasterKey = (token?: string) => !!devMasterKey && token === devMasterKey;
+const masterKey =
+  ["development", "staging"].includes(env.NODE_ENV) && env.MASTER_KEY
+    ? sha256(env.MASTER_KEY)
+    : undefined;
+// Equal-length digests, so any token length compares in constant time.
+const isMasterKey = (token: string) => !!masterKey && timingSafeEqual(sha256(token), masterKey);
+
+const sessionExpiry = () => new Date(Date.now() + REFRESH_MAX_AGE_MS);
 
 const startSession = async (userId: number) => {
   const sessionId = randomUUID();
-  const [accessToken, refreshToken] = await Promise.all([
-    signToken("access", userId, sessionId),
-    signToken("refresh", userId, sessionId),
-  ]);
-  if (!accessToken || !refreshToken) return;
-
-  await storeSession(userId, sessionId, new Date(Date.now() + REFRESH_MAX_AGE_MS));
-  return { accessToken, refreshToken };
+  await Promise.all([pruneSessions(userId), storeSession(userId, sessionId, sessionExpiry())]);
+  return signTokens({ userId, sessionId });
 };
 
 /** The user behind an access token, while its session hasn't been revoked. */
 export const authenticate = async (token: string) => {
-  if (isDevMasterKey(token)) return (await getUserByEmail(process.env.MASTER_TEST_EMAIL))?.id;
+  if (isMasterKey(token)) return (await getUserByEmail(env.MASTER_TEST_EMAIL))?.id;
 
   const session = await verifyToken("access", token);
   if (session && (await isSessionCurrent(session))) return session.userId;
@@ -32,26 +39,24 @@ export const authenticate = async (token: string) => {
 
 export const loginWithGoogle = async (code: string, codeVerifier: string) => {
   const account = await verifyGoogleCode(code, codeVerifier);
-  if (!account?.name) return;
+  if (!account) return;
 
   // TODO: match by verified Google ID once existing accounts are linked
   const user =
     (await getUserByEmail(account.email)) ??
     (await insertUser({ email: account.email, name: account.name, image: account.picture }));
-  return user && startSession(user.id);
+  return startSession(user.id);
 };
 
-/** A new access token for the same session. */
+/** Slides the session: new tokens for the same session ID. Never revokes, since the FE refreshes in parallel. */
 export const refreshSession = async (refreshToken?: string) => {
   const session = await verifyToken("refresh", refreshToken);
-  if (session && (await isSessionCurrent(session)))
-    return signToken("access", session.userId, session.sessionId);
+  if (session && (await extendSession(session, sessionExpiry()))) return signTokens(session);
 };
 
-/** Signs the user out on every device. */
+/** Ends this device's session, named by the refresh token or else the access token. */
 export const logout = async (accessToken?: string, refreshToken?: string) => {
-  const userId =
-    (await verifyToken("refresh", refreshToken))?.userId ??
-    (accessToken && !isDevMasterKey(accessToken) ? await authenticate(accessToken) : undefined);
-  if (userId) await revokeSessions(userId);
+  const session =
+    (await verifyToken("refresh", refreshToken)) ?? (await verifyToken("access", accessToken));
+  if (session) await endSession(session);
 };

@@ -6,7 +6,7 @@ export const Color = {
 } as const;
 
 export const ColorValues = [Color.LIGHT, Color.DARK] as const;
-export type ColorMode = (typeof ColorValues)[number];
+type ColorMode = (typeof ColorValues)[number];
 
 export type Coordinates = {
   lat: number;

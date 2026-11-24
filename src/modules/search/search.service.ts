@@ -1,5 +1,6 @@
 import { db } from "../../db";
 import { placeSearchTable, type SelectPlaceSearch } from "../../db/schemas/place-search.schema.ts";
+import { single } from "../../db/utils/sql.ts";
 import type { PlaceSearch, PlaceSearchInput } from "../../types";
 
 const toSearch = (row: SelectPlaceSearch): PlaceSearch => ({
@@ -25,11 +26,10 @@ export const listSearches = async (userId: number) => {
   return rows.map(toSearch);
 };
 
-export const logSearch = async (userId: number, { coordinates, ...search }: PlaceSearchInput) => {
-  const [created] = await db
+export const logSearch = (userId: number, { coordinates, ...search }: PlaceSearchInput) =>
+  db
     .insert(placeSearchTable)
     .values({ userId, ...search, latitude: coordinates.lat, longitude: coordinates.lng })
-    .returning();
-  if (!created) throw new Error("Search was not saved");
-  return toSearch(created);
-};
+    .returning()
+    .then(single)
+    .then(toSearch);

@@ -17,7 +17,6 @@ import {
   type Slot,
   timeSlotOf,
 } from "./trip.schedule.ts";
-import type { SaveResult } from "./trip.service.ts";
 import type { AvailabilityWindow } from "./trip.types.ts";
 import { type CalendarInput, MAX_STOPS } from "./trip.validation.ts";
 
@@ -34,11 +33,7 @@ const stopPlan = (publicId: string, position: number, slot?: Slot) => ({
  * Saves trip dates, every time slot, changed open hours, duplicated stops and the list order together.
  * Copies use temporary client IDs until saved. Everything is checked before anything is written.
  */
-export const saveCalendar = async (
-  tx: Tx,
-  trip: TripRow,
-  calendar: CalendarInput,
-): Promise<SaveResult> => {
+export const saveCalendar = async (tx: Tx, trip: TripRow, calendar: CalendarInput) => {
   const saved = new Map(trip.stops.map((stop) => [stop.publicId, stop]));
   const placeOf = new Map(trip.stops.map((stop) => [stop.publicId, stop.place]));
 
@@ -88,12 +83,13 @@ export const saveCalendar = async (
   for (const stop of trip.stops) assertReservationKept(timeSlotOf(stop), slots.get(stop.publicId));
   assertChronological(order.map((id) => slots.get(id)));
 
+  // Copies are the ordered stops that aren't saved yet.
   await insertStops(
     tx,
     trip.id,
-    calendar.newStops.map(({ clientId }) => {
-      const publicId = resolve(clientId);
-      return { publicId, placeId: placeOf.get(publicId)!.id, position: order.indexOf(publicId) };
+    order.flatMap((publicId, position) => {
+      const place = placeOf.get(publicId);
+      return place && !saved.has(publicId) ? [{ publicId, placeId: place.id, position }] : [];
     }),
   );
   await saveStopPlans(
