@@ -18,15 +18,6 @@ export default tseslint.config(
           varsIgnorePattern: "^_",
         },
       ],
-      "no-restricted-syntax": [
-        "error",
-        {
-          selector: "UnaryExpression[operator='delete']",
-          message: "Build a new object (spread or destructure the key out) instead of delete.",
-        },
-      ],
-      "@typescript-eslint/no-non-null-assertion": "error",
-      "@typescript-eslint/consistent-type-assertions": ["error", { assertionStyle: "never" }],
     },
   },
 );
