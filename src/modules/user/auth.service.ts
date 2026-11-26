@@ -1,6 +1,6 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { env } from "../../env.ts";
-import { verifyGoogleCode } from "../../lib/auth/google.ts";
+import { verifyGoogleCode, verifyGoogleIdToken } from "../../lib/auth/google.ts";
 import { REFRESH_MAX_AGE_MS, signTokens, verifyToken } from "../../lib/auth/tokens.ts";
 import {
   endSession,
@@ -10,6 +10,7 @@ import {
   storeSession,
 } from "./auth.queries.ts";
 import { getUserByEmail, insertUser } from "./user.queries.ts";
+import type { GoogleLogin } from "./user.validation.ts";
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest();
 
@@ -37,8 +38,10 @@ export const authenticate = async (token: string) => {
   if (session && (await isSessionCurrent(session))) return session.userId;
 };
 
-export const loginWithGoogle = async (code: string, codeVerifier: string) => {
-  const account = await verifyGoogleCode(code, codeVerifier);
+export const loginWithGoogle = async (login: GoogleLogin) => {
+  const account = await ("idToken" in login
+    ? verifyGoogleIdToken(login.idToken)
+    : verifyGoogleCode(login.code, login.codeVerifier));
   if (!account) return;
 
   // TODO: match by verified Google ID once existing accounts are linked

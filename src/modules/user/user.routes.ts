@@ -28,12 +28,12 @@ userRouter.patch(
 );
 
 userRouter.post("/login/google", async (req, res) => {
-  const { code, codeVerifier } = parse(googleLoginSchema, req.body ?? {});
-  const tokens = await loginWithGoogle(code, codeVerifier);
+  const tokens = await loginWithGoogle(parse(googleLoginSchema, req.body ?? {}));
   if (!tokens) throw unauthorized();
 
+  // Cookies for the web's server, which ignores the body; the iOS app reads the tokens from the body.
   setAuthCookies(res, tokens);
-  res.json({ success: true });
+  res.json({ success: true, data: tokens });
 });
 
 userRouter.post("/refresh", async (req, res) => {
@@ -44,7 +44,7 @@ userRouter.post("/refresh", async (req, res) => {
   }
 
   setAuthCookies(res, tokens);
-  res.json({ success: true });
+  res.json({ success: true, data: tokens });
 });
 
 userRouter.post("/logout", async (req, res) => {

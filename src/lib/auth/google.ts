@@ -13,13 +13,11 @@ const failed = (step: string) => (error: unknown) => {
   return undefined;
 };
 
-/** Exchanges a PKCE authorization code for the verified Google account. */
-export const verifyGoogleCode = async (code: string, codeVerifier: string) => {
-  const idToken = await client
-    .getToken({ code, codeVerifier })
-    .then(({ tokens }) => tokens.id_token, failed("token exchange"));
-  if (!idToken) return;
-
+/**
+ * The verified Google account behind an ID token issued for our web client.
+ * The iOS app names the web client as its server client, so its ID tokens pass the same check.
+ */
+export const verifyGoogleIdToken = async (idToken: string) => {
   const ticket = await client
     .verifyIdToken({ idToken, audience: env.GOOGLE_CLIENT_ID })
     .catch(failed("ID token check"));
@@ -32,4 +30,12 @@ export const verifyGoogleCode = async (code: string, codeVerifier: string) => {
     name: payload.name || payload.email.replace(/@.*/, ""),
     picture: payload.picture,
   };
+};
+
+/** Exchanges a PKCE authorization code for the verified Google account. */
+export const verifyGoogleCode = async (code: string, codeVerifier: string) => {
+  const idToken = await client
+    .getToken({ code, codeVerifier })
+    .then(({ tokens }) => tokens.id_token, failed("token exchange"));
+  return idToken ? verifyGoogleIdToken(idToken) : undefined;
 };
