@@ -7,8 +7,8 @@ export const userTable = pgTable("users", {
   ...identity,
   name: varchar({ length: 255 }).notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
-  // TODO: link existing accounts, then match users by Google ID
-  // googleSub: varchar("google_sub", { length: 255 }).unique(),
+  // Google's stable account ID; emails can change, so logins match on this.
+  googleSub: varchar("google_sub", { length: 255 }).notNull().unique(),
   image: varchar({ length: 2048 }),
   preferences: jsonb()
     .$type<UserPreferences>()

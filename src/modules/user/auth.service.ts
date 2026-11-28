@@ -9,7 +9,7 @@ import {
   pruneSessions,
   storeSession,
 } from "./auth.queries.ts";
-import { getUserByEmail, insertUser } from "./user.queries.ts";
+import { getUserByEmail, getUserByGoogleSub, insertUser } from "./user.queries.ts";
 import type { GoogleLogin } from "./user.validation.ts";
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest();
@@ -44,11 +44,8 @@ export const loginWithGoogle = async (login: GoogleLogin) => {
     : verifyGoogleCode(login.code, login.codeVerifier));
   if (!account) return;
 
-  // TODO: match by verified Google ID once existing accounts are linked
-  const user =
-    (await getUserByEmail(account.email)) ??
-    (await insertUser({ email: account.email, name: account.name, image: account.picture }));
-  return startSession(user.id);
+  const user = (await getUserByGoogleSub(account.googleSub)) ?? (await insertUser(account));
+  if (user) return startSession(user.id);
 };
 
 /** Slides the session: new tokens for the same session ID. Never revokes, since the FE refreshes in parallel. */

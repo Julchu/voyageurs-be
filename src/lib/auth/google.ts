@@ -24,11 +24,11 @@ export const verifyGoogleIdToken = async (idToken: string) => {
   const payload = ticket?.getPayload();
   if (!payload?.email_verified || !payload.email) return;
 
-  // TODO: also return payload.sub once users are matched by Google ID (see user schema)
   return {
+    googleSub: payload.sub,
     email: payload.email,
     name: payload.name || payload.email.replace(/@.*/, ""),
-    picture: payload.picture,
+    image: payload.picture,
   };
 };
 
