@@ -12,6 +12,7 @@ import {
   moveStops,
   removeStops,
   saveTrip,
+  softDeleteTrip,
   type TripChanges,
   type TripRow,
   type Tx,
@@ -141,6 +142,12 @@ export const createTrip = (userId: number, { name, stops }: CreateTripInput) =>
     );
     return { ...toTripDto(await findTrip(tx, id)), stopIdMap };
   });
+
+export const deleteTrip = async (userId: number, publicId: string) => {
+  const trip = await softDeleteTrip(userId, publicId);
+  if (!trip) throw notFound("Trip not found");
+  return trip;
+};
 
 export const updateTrip = (userId: number, publicId: string, patch: TripPatch) =>
   db.transaction(async (tx) => {

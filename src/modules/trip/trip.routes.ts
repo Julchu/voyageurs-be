@@ -2,7 +2,7 @@ import { Router } from "express";
 import { requireUser } from "../../middleware/require-user.ts";
 import { notFound } from "../../lib/errors.ts";
 import { isPublicId, parse } from "../../lib/validation.ts";
-import { createTrip, listTrips, updateTrip } from "./trip.service.ts";
+import { createTrip, deleteTrip, listTrips, updateTrip } from "./trip.service.ts";
 import { createTripSchema, tripPatchSchema } from "./trip.validation.ts";
 
 export const tripRouter: Router = Router();
@@ -30,5 +30,15 @@ tripRouter.patch(
 
     const trip = await updateTrip(req.userId, publicId, parse(tripPatchSchema, req.body ?? {}));
     res.json({ success: true, data: trip });
+  }),
+);
+
+tripRouter.delete(
+  "/:publicId",
+  requireUser(async (req, res) => {
+    const { publicId } = req.params;
+    if (!isPublicId(publicId)) throw notFound("Trip not found");
+
+    res.json({ success: true, data: await deleteTrip(req.userId, publicId) });
   }),
 );

@@ -55,6 +55,22 @@ export const lockTrip = async (tx: Tx, userId: number, publicId: string) => {
   return trip;
 };
 
+/** Soft-deletes the owner's trip; returns it, or undefined when no active trip matched. */
+export const softDeleteTrip = async (userId: number, publicId: string) => {
+  const [trip] = await db
+    .update(tripTable)
+    .set({ deletedAt: new Date() })
+    .where(
+      and(
+        eq(tripTable.publicId, publicId),
+        eq(tripTable.userId, userId),
+        isNull(tripTable.deletedAt),
+      ),
+    )
+    .returning({ publicId: tripTable.publicId });
+  return trip;
+};
+
 export const insertTrip = (tx: Tx, values: Pick<InsertTrip, "userId" | "name">) =>
   tx.insert(tripTable).values(values).returning().then(single);
 
